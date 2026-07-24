@@ -29,6 +29,8 @@ public class RegistryServer {
 
         server.createContext("/register", RegistryServer::registerNode);
         server.createContext("/peers", RegistryServer::getPeers);
+        server.createContext("/topology", RegistryServer::getTopology);
+        server.createContext("/aggregator", RegistryServer::handleAggregator);
         server.createContext("/ping", RegistryServer::pingNode);
         server.createContext("/leave", RegistryServer::leaveNode);
 
@@ -188,6 +190,65 @@ public class RegistryServer {
         os.close();
     }
     
+    private static void getTopology(HttpExchange exchange) throws IOException {
+        String response = "{\"totalNodes\":" + manager.getTotalNodes() + "}";
+        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        exchange.sendResponseHeaders(200, response.length());
+        OutputStream os = exchange.getResponseBody();
+        os.write(response.getBytes());
+        os.close();
+    }
+
+    private static void handleAggregator(HttpExchange exchange) throws IOException {
+        if (exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+            BufferedReader br = new BufferedReader(new InputStreamReader(exchange.getRequestBody()));
+            StringBuilder body = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                body.append(line);
+            }
+            String request = body.toString();
+            String host = "";
+            int port = 0;
+
+            int hostIndex = request.indexOf("\"host\"");
+            if (hostIndex != -1) {
+                int first = request.indexOf("\"", hostIndex + 6);
+                int second = request.indexOf("\"", first + 1);
+                host = request.substring(first + 1, second);
+            }
+
+            int portIndex = request.indexOf("\"port\"");
+            if (portIndex != -1) {
+                int colon = request.indexOf(":", portIndex);
+                int comma = request.indexOf(",", colon);
+                if (comma == -1) comma = request.indexOf("}", colon);
+                port = Integer.parseInt(request.substring(colon + 1, comma).trim());
+            }
+
+            manager.setAggregatorInfo(host, port);
+            System.out.println("Aggregator registered at " + host + ":" + port);
+
+            String response = "{\"status\":\"ok\"}";
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length());
+            OutputStream os = exchange.getResponseBody();
+            os.write(response.getBytes());
+            os.close();
+        } else if (exchange.getRequestMethod().equalsIgnoreCase("GET")) {
+            String host = manager.getAggregatorHost();
+            int port = manager.getAggregatorPort();
+            String response = "{\"host\":\"" + host + "\",\"port\":" + port + "}";
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length());
+            OutputStream os = exchange.getResponseBody();
+            os.write(response.getBytes());
+            os.close();
+        } else {
+            exchange.sendResponseHeaders(405, -1);
+        }
+    }
+
     private static void pingNode(HttpExchange exchange) throws IOException {
         String query = exchange.getRequestURI().getQuery();
         if (query != null && query.contains("nodeId=")) {

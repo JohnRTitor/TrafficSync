@@ -9,6 +9,9 @@ public class RegistryManager {
 
     private int nextNodeId;
 
+    private String aggregatorHost = "";
+    private int aggregatorPort = 0;
+
     public RegistryManager(Topology topology) {
 
         this.topology = topology;
@@ -131,6 +134,23 @@ public class RegistryManager {
 
         System.out.println("============================");
 
+    }
+
+    public synchronized void setAggregatorInfo(String host, int port) {
+        this.aggregatorHost = host;
+        this.aggregatorPort = port;
+    }
+
+    public synchronized String getAggregatorHost() {
+        return aggregatorHost;
+    }
+
+    public synchronized int getAggregatorPort() {
+        return aggregatorPort;
+    }
+
+    public synchronized int getTotalNodes() {
+        return topology.getTotalNodes();
     }
 
 }

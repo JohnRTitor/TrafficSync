@@ -3,6 +3,9 @@ package snapshot;
 import common.Message;
 import common.MessageType;
 import communication.Communication;
+import communication.Client;
+import communication.RegistryClient;
+import aggregator.SnapshotSerializer;
 import node.Node;
 
 import java.util.HashMap;
@@ -151,9 +154,6 @@ public class SnapshotEngine {
 
     }
 
-    /**
-     * Snapshot completed.
-     */
     private void finishSnapshot() {
 
         System.out.println("\nSnapshot Completed at Node " + nodeId);
@@ -168,6 +168,25 @@ public class SnapshotEngine {
         }
 
         report.printReport();
+
+        System.out.println("Sending Snapshot Report to Aggregator...");
+        
+        try {
+            RegistryClient registryClient = new RegistryClient();
+            String aggHost = registryClient.getAggregatorHost();
+            int aggPort = registryClient.getAggregatorPort();
+            
+            if (aggHost != null && !aggHost.isEmpty() && aggPort > 0) {
+                String payload = SnapshotSerializer.serialize(report);
+                Message msg = new Message(MessageType.SNAPSHOT_REPORT, nodeId, 0, payload);
+                Client client = new Client();
+                client.send(aggHost, aggPort, msg);
+            } else {
+                System.out.println("Aggregator not found in Registry. Report not sent.");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send Snapshot Report: " + e.getMessage());
+        }
 
     }
 

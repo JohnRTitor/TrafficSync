@@ -153,6 +153,46 @@ public class RegistryClient {
         return neighbors;
     }
     
+    public String getAggregatorHost() {
+        try {
+            URL url = java.net.URI.create(SERVER + "/aggregator").toURL();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            reader.close();
+            String json = response.toString();
+            return extract(json, "\"host\":\"", "\"");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    public int getAggregatorPort() {
+        try {
+            URL url = java.net.URI.create(SERVER + "/aggregator").toURL();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            reader.close();
+            String json = response.toString();
+            int portIndex = json.indexOf("\"port\":");
+            int end = json.indexOf("}", portIndex);
+            return Integer.parseInt(json.substring(portIndex + 7, end).trim());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public Set<Integer> getIncomingNeighbors() {
         return incomingNeighbors;
     }
