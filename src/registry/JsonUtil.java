@@ -6,7 +6,8 @@ public class JsonUtil {
 
     public static String registrationResponse(
             NodeInfo node,
-            List<Integer> neighbors) {
+            List<Integer> neighbors,
+            List<Integer> incomingNeighbors) {
 
         StringBuilder sb = new StringBuilder();
 
@@ -37,6 +38,14 @@ public class JsonUtil {
 
         }
 
+        sb.append("],");
+        
+        sb.append("\"incoming\":[");
+        for (int i = 0; i < incomingNeighbors.size(); i++) {
+            sb.append(incomingNeighbors.get(i));
+            if (i != incomingNeighbors.size() - 1)
+                sb.append(",");
+        }
         sb.append("]}");
 
         return sb.toString();
@@ -45,7 +54,8 @@ public class JsonUtil {
 
     public static String alreadyRegisteredResponse(
             NodeInfo node,
-            List<Integer> neighbors) {
+            List<Integer> neighbors,
+            List<Integer> incomingNeighbors) {
 
         StringBuilder sb = new StringBuilder();
 
@@ -76,6 +86,14 @@ public class JsonUtil {
 
         }
 
+        sb.append("],");
+        
+        sb.append("\"incoming\":[");
+        for (int i = 0; i < incomingNeighbors.size(); i++) {
+            sb.append(incomingNeighbors.get(i));
+            if (i != incomingNeighbors.size() - 1)
+                sb.append(",");
+        }
         sb.append("]}");
 
         return sb.toString();

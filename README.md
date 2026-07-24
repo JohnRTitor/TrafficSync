@@ -10,8 +10,8 @@ The codebase is divided into several modules (packages) with a clear separation 
 - **Role:** Acts as the network's central directory service.
 - **Functionality:** 
   - Loads the network topology from a `topology.txt` file.
-  - Exposes an HTTP server (default port `8080`) with endpoints for nodes to `/register`.
-  - Distributes the peer map (neighbors) to nodes via the `/peers` endpoint.
+  - Exposes an HTTP server (default port `8080`) with endpoints for nodes to `/register`, `/leave`, and `/ping`.
+  - Distributes the peer map (neighbors) to nodes via the `/peers` endpoint, along with incoming edge definitions.
 - **Key Classes:** `RegistryServer`, `RegistryManager`, `Topology`.
 
 ### 2. `communication` (Site Socket Layer)
@@ -78,6 +78,12 @@ The interactive CLI will ask for a listening port (e.g., `5001`, `5002`, `5003`)
 
 ### 4. Running Algorithms
 Once multiple nodes are running and registered, you can use the interactive `NodeRunner` CLI on any node to:
-- **Start Traffic Simulator:** Generate randomized application messages across the network.
-- **Start Snapshot:** Trigger the Chandy-Lamport algorithm to record the global state.
-- **Print Local State:** View the locally recorded snapshot variables and channel buffers for that specific node.
+- **1. Start Traffic Simulator:** Generate randomized application messages across the network.
+- **2. Stop Traffic Simulator:** Halt the background traffic thread.
+- **3. Start Diffusing Computation:** Begin the Dijkstra-Scholten termination detection algorithm.
+- **4. Start Snapshot:** Trigger the Chandy-Lamport algorithm to record the global state.
+- **5. Print Local State:** View the locally recorded snapshot variables and channel buffers for that specific node.
+- **6. Exit:** Cleanly unregister from the Registry Server and shut down the node.
+- **7. Send Manual Message:** Manually input a destination Node ID and a custom text payload to send an `APPLICATION` message.
+- **8. Refresh Peers:** Query the Registry Server to refresh dynamic connections, particularly useful if neighbors boot up after you.
+- **9. Ping Server:** Send a health-check ping to the Registry Server.

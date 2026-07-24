@@ -3,22 +3,27 @@ package diffusing;
 import common.Message;
 import common.MessageType;
 import communication.Communication;
+import node.Node;
+
+import java.util.Set;
 
 /**
  * Diffusing Computation Algorithm
  */
 public class DiffusingEngine {
 
+    private Node node;
     private int nodeId;
     private Communication communication;
 
     private boolean visited;
     private int parent = -1;
 
-    public DiffusingEngine(int nodeId, Communication communication) {
+    public DiffusingEngine(Node node) {
 
-        this.nodeId = nodeId;
-        this.communication = communication;
+        this.node = node;
+        this.nodeId = node.getNodeId();
+        this.communication = node.getCommunication();
         this.visited = false;
     }
 
@@ -92,31 +97,18 @@ public class DiffusingEngine {
      */
     private void sendExplore() {
 
-        int receiver;
+        Set<Integer> neighbors = node.getNeighbors().keySet();
 
-        switch (nodeId) {
+        for (int receiver : neighbors) {
+            Message explore = new Message(
+                    MessageType.EXPLORE,
+                    nodeId,
+                    receiver,
+                    "EXPLORE"
+            );
 
-            case 1:
-                receiver = 2;
-                break;
-
-            case 2:
-                receiver = 3;
-                break;
-
-            default:
-                receiver = 1;
-
+            communication.send(explore);
         }
-
-        Message explore = new Message(
-                MessageType.EXPLORE,
-                nodeId,
-                receiver,
-                "EXPLORE"
-        );
-
-        communication.send(explore);
 
     }
 

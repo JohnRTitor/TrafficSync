@@ -9,6 +9,7 @@ import snapshot.SnapshotEngine;
 import traffic.TrafficSimulator;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Represents one node in the distributed system.
@@ -42,13 +43,13 @@ public class Node {
         communication = new SocketCommunication(port, messageHandler, registryClient);
 
         // Create Snapshot Engine
-        snapshotEngine = new SnapshotEngine(nodeId, communication);
+        snapshotEngine = new SnapshotEngine(this);
 
         // Create Diffusing Engine
-        diffusingEngine = new DiffusingEngine(nodeId, communication);
+        diffusingEngine = new DiffusingEngine(this);
 
         // Create Traffic Simulator
-        trafficSimulator = new TrafficSimulator(nodeId, communication);
+        trafficSimulator = new TrafficSimulator(this);
 
         // Connect engines with MessageHandler
         messageHandler.setSnapshotEngine(snapshotEngine);
@@ -85,6 +86,21 @@ public class Node {
     
     public Map<Integer, Integer> getNeighbors() {
         return registryClient.getNeighbors();
+    }
+    public Set<Integer> getIncomingNeighbors() {
+        return registryClient.getIncomingNeighbors();
+    }
+    
+    public void refreshPeers() {
+        registryClient.loadPeers();
+    }
+    
+    public void pingServer() {
+        registryClient.pingServer();
+    }
+    
+    public void leaveNetwork() {
+        registryClient.leaveServer();
     }
     
     public void startCommunication() {

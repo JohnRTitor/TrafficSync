@@ -3,20 +3,28 @@ package traffic;
 import common.Message;
 import common.MessageType;
 import communication.Communication;
+import node.Node;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * Continuously generates application traffic.
  */
 public class TrafficSimulator extends Thread {
 
+    private Node node;
     private int nodeId;
     private Communication communication;
     private boolean running = true;
+    private final Random random = new Random();
 
-    public TrafficSimulator(int nodeId, Communication communication) {
+    public TrafficSimulator(Node node) {
 
-        this.nodeId = nodeId;
-        this.communication = communication;
+        this.node = node;
+        this.nodeId = node.getNodeId();
+        this.communication = node.getCommunication();
     }
 
     @Override
@@ -33,14 +41,10 @@ public class TrafficSimulator extends Thread {
                 e.printStackTrace();
             }
 
-            int receiver;
-
-            if (nodeId == 1)
-                receiver = 2;
-            else if (nodeId == 2)
-                receiver = 3;
-            else
-                receiver = 1;
+            List<Integer> neighbors = new ArrayList<>(node.getNeighbors().keySet());
+            if (neighbors.isEmpty()) continue;
+            
+            int receiver = neighbors.get(random.nextInt(neighbors.size()));
 
             Message message = new Message(
                     MessageType.TRAFFIC,

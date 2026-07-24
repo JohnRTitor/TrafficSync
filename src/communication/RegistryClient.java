@@ -6,7 +6,9 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class RegistryClient {
 
@@ -18,6 +20,7 @@ public class RegistryClient {
 
     // Neighbor ID -> Port
     private final Map<Integer, Integer> neighbors = new HashMap<>();
+    private final Set<Integer> incomingNeighbors = new HashSet<>();
 
     public boolean register(String host, int port) {
 
@@ -70,6 +73,17 @@ public class RegistryClient {
         if (!list.isBlank()) {
             for (String value : list.split(",")) {
                 neighbors.put(Integer.parseInt(value.trim()), 0);
+            }
+        }
+        
+        int incomingStart = json.indexOf("\"incoming\":[");
+        incomingNeighbors.clear();
+        if (incomingStart != -1) {
+            String incomingList = json.substring(incomingStart + 12, json.indexOf("]", incomingStart));
+            if (!incomingList.isBlank()) {
+                for (String value : incomingList.split(",")) {
+                    incomingNeighbors.add(Integer.parseInt(value.trim()));
+                }
             }
         }
 
@@ -137,5 +151,33 @@ public class RegistryClient {
 
     public Map<Integer, Integer> getNeighbors() {
         return neighbors;
+    }
+    
+    public Set<Integer> getIncomingNeighbors() {
+        return incomingNeighbors;
+    }
+    
+    public void pingServer() {
+        try {
+            URL url = java.net.URI.create(SERVER + "/ping?nodeId=" + nodeId).toURL();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.getResponseCode();
+            connection.disconnect();
+        } catch (Exception e) {
+            System.out.println("Ping failed: " + e.getMessage());
+        }
+    }
+    
+    public void leaveServer() {
+        try {
+            URL url = java.net.URI.create(SERVER + "/leave?nodeId=" + nodeId).toURL();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.getResponseCode();
+            connection.disconnect();
+        } catch (Exception e) {
+            System.out.println("Leave failed: " + e.getMessage());
+        }
     }
 }

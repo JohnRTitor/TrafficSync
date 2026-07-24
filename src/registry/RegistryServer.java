@@ -29,6 +29,8 @@ public class RegistryServer {
 
         server.createContext("/register", RegistryServer::registerNode);
         server.createContext("/peers", RegistryServer::getPeers);
+        server.createContext("/ping", RegistryServer::pingNode);
+        server.createContext("/leave", RegistryServer::leaveNode);
 
         server.setExecutor(null);
 
@@ -129,7 +131,8 @@ public class RegistryServer {
             response =
                     JsonUtil.alreadyRegisteredResponse(
                             node,
-                            manager.getNeighbors(node.getId()));
+                            manager.getNeighbors(node.getId()),
+                            manager.getIncomingNeighbors(node.getId()));
 
         } else {
 
@@ -141,7 +144,8 @@ public class RegistryServer {
             response =
                     JsonUtil.registrationResponse(
                             node,
-                            manager.getNeighbors(node.getId()));
+                            manager.getNeighbors(node.getId()),
+                            manager.getIncomingNeighbors(node.getId()));
         }
 
         exchange.getResponseHeaders().set(
@@ -182,5 +186,40 @@ public class RegistryServer {
         os.write(response.getBytes());
 
         os.close();
+    }
+    
+    private static void pingNode(HttpExchange exchange) throws IOException {
+        String query = exchange.getRequestURI().getQuery();
+        if (query != null && query.contains("nodeId=")) {
+            String nodeIdStr = query.substring(query.indexOf("nodeId=") + 7);
+            System.out.println("Node " + nodeIdStr + " pinged the server.");
+        } else {
+            System.out.println("Unknown node pinged the server.");
+        }
+        
+        String response = "{\"status\":\"ok\"}";
+        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        exchange.sendResponseHeaders(200, response.length());
+        OutputStream os = exchange.getResponseBody();
+        os.write(response.getBytes());
+        os.close();
+    }
+    
+    private static void leaveNode(HttpExchange exchange) throws IOException {
+        String query = exchange.getRequestURI().getQuery();
+        if (query != null && query.contains("nodeId=")) {
+            int nodeId = Integer.parseInt(query.substring(query.indexOf("nodeId=") + 7));
+            manager.removeNode(nodeId);
+            System.out.println("Node " + nodeId + " left the network.");
+        }
+        
+        String response = "{\"status\":\"ok\"}";
+        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        exchange.sendResponseHeaders(200, response.length());
+        OutputStream os = exchange.getResponseBody();
+        os.write(response.getBytes());
+        os.close();
+        
+        manager.printRegisteredNodes();
     }
 }

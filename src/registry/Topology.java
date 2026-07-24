@@ -72,6 +72,16 @@ public class Topology {
 
     }
 
+    public List<Integer> getIncomingNeighbors(int nodeId){
+        List<Integer> incoming = new ArrayList<>();
+        for(Map.Entry<Integer, List<Integer>> entry : adjacencyList.entrySet()){
+            if(entry.getValue().contains(nodeId)){
+                incoming.add(entry.getKey());
+            }
+        }
+        return incoming;
+    }
+
     public int getTotalNodes(){
 
         return totalNodes;

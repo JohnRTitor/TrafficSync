@@ -3,6 +3,7 @@ package snapshot;
 import common.Message;
 import common.MessageType;
 import communication.Communication;
+import node.Node;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,6 +15,7 @@ import java.util.Set;
  */
 public class SnapshotEngine {
 
+    private Node node;
     private int nodeId;
     private Communication communication;
 
@@ -25,10 +27,11 @@ public class SnapshotEngine {
 
     private Map<Integer, ChannelState> channelStates;
 
-    public SnapshotEngine(int nodeId, Communication communication) {
+    public SnapshotEngine(Node node) {
 
-        this.nodeId = nodeId;
-        this.communication = communication;
+        this.node = node;
+        this.nodeId = node.getNodeId();
+        this.communication = node.getCommunication();
 
         this.localState = new LocalState(nodeId);
 
@@ -61,28 +64,10 @@ public class SnapshotEngine {
         sendMarker();
     }
 
-    /**
-     * Ring topology:
-     * Node1 <- Node3
-     * Node2 <- Node1
-     * Node3 <- Node2
-     */
     private void initializeIncomingChannels() {
-
-        if (nodeId == 1) {
-
-            pendingChannels.add(3);
-            channelStates.put(3, new ChannelState(3));
-
-        } else if (nodeId == 2) {
-
-            pendingChannels.add(1);
-            channelStates.put(1, new ChannelState(1));
-
-        } else {
-
-            pendingChannels.add(2);
-            channelStates.put(2, new ChannelState(2));
+        for (int incomingId : node.getIncomingNeighbors()) {
+            pendingChannels.add(incomingId);
+            channelStates.put(incomingId, new ChannelState(incomingId));
         }
     }
 
@@ -90,24 +75,15 @@ public class SnapshotEngine {
      * Send MARKER.
      */
     private void sendMarker() {
-
-        int receiver;
-
-        if (nodeId == 1)
-            receiver = 2;
-        else if (nodeId == 2)
-            receiver = 3;
-        else
-            receiver = 1;
-
-        Message marker = new Message(
-                MessageType.MARKER,
-                nodeId,
-                receiver,
-                "MARKER"
-        );
-
-        communication.send(marker);
+        for (int receiver : node.getNeighbors().keySet()) {
+            Message marker = new Message(
+                    MessageType.MARKER,
+                    nodeId,
+                    receiver,
+                    "MARKER"
+            );
+            communication.send(marker);
+        }
     }
 
     /**

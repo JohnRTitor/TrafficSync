@@ -2,6 +2,9 @@ package app;
 
 import node.Node;
 
+import common.Message;
+import common.MessageType;
+
 import java.util.Map;
 import java.util.Scanner;
 
@@ -43,6 +46,9 @@ public class NodeRunner {
                 System.out.println("4. Start Snapshot");
                 System.out.println("5. Print Local State");
                 System.out.println("6. Exit");
+                System.out.println("7. Send Manual Message");
+                System.out.println("8. Refresh Peers");
+                System.out.println("9. Ping Server");
                 System.out.print("Choice: ");
 
                 int choice = scanner.nextInt();
@@ -61,9 +67,28 @@ public class NodeRunner {
                     System.out.println("==================================");
                     System.out.println(node.getSnapshotEngine().getLocalState());
                 } else if (choice == 6) {
+                    node.leaveNetwork();
                     node.stopCommunication();
                     System.out.println("Exiting...");
                     break;
+                } else if (choice == 7) {
+                    System.out.print("Enter Destination Node ID: ");
+                    int dest = scanner.nextInt();
+                    scanner.nextLine(); // consume newline
+                    System.out.print("Enter Message: ");
+                    String text = scanner.nextLine();
+                    
+                    Message msg = new Message(MessageType.APPLICATION, node.getNodeId(), dest, text);
+                    node.getCommunication().send(msg);
+                } else if (choice == 8) {
+                    node.refreshPeers();
+                    System.out.println("Neighbors:");
+                    for (Map.Entry<Integer, Integer> entry : node.getNeighbors().entrySet()) {
+                        System.out.println("Node " + entry.getKey() + " -> Port " + entry.getValue());
+                    }
+                } else if (choice == 9) {
+                    node.pingServer();
+                    System.out.println("Ping sent to server.");
                 } else {
                     System.out.println("Invalid Choice.");
                 }

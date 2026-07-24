@@ -62,10 +62,20 @@ public class RegistryManager {
 
         return node;
     }
+    
+    public synchronized void removeNode(int nodeId) {
+        registeredNodes.remove(nodeId);
+    }
 
     public synchronized List<Integer> getNeighbors(int nodeId) {
 
         return topology.getNeighbors(nodeId);
+
+    }
+
+    public synchronized List<Integer> getIncomingNeighbors(int nodeId) {
+
+        return topology.getIncomingNeighbors(nodeId);
 
     }
 
