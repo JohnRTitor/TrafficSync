@@ -8,9 +8,9 @@ public class TestRegistry {
 
         RegistryManager manager = new RegistryManager(topology);
 
-        NodeInfo n1 = manager.registerNode("192.168.1.10", 5001);
-	NodeInfo n2 = manager.registerNode("192.168.1.11", 5002);
-	NodeInfo n3 = manager.registerNode("192.168.1.12", 5003);
+        manager.registerNode("192.168.1.10", 5001);
+	manager.registerNode("192.168.1.11", 5002);
+	manager.registerNode("192.168.1.12", 5003);
 
         manager.printRegisteredNodes();
 

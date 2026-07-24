@@ -22,7 +22,7 @@ public class RegistryClient {
     public boolean register(String host, int port) {
 
         try {
-            URL url = new URL(SERVER + "/register");
+            URL url = java.net.URI.create(SERVER + "/register").toURL();
 
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
@@ -84,7 +84,7 @@ public class RegistryClient {
 
     public void loadPeers() {
         try {
-            URL url = new URL(SERVER + "/peers");
+            URL url = java.net.URI.create(SERVER + "/peers").toURL();
 
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");

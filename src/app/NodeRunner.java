@@ -20,6 +20,7 @@ public class NodeRunner {
 
         if (port < 1024 || port > 65535) {
             System.out.println("Invalid Port Number.");
+            scanner.close();
             return;
         }
 

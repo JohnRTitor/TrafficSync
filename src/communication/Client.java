@@ -24,7 +24,7 @@ public class Client {
             System.out.println("=================================");
             System.out.println("From Node : " + message.getSenderId());
             System.out.println("To Node   : " + message.getReceiverId());
-            System.out.println("Type      : " + message.getMessageType());
+            System.out.println("Type      : " + message.getType());
             System.out.println("Port      : " + port);
             System.out.println("=================================");
 

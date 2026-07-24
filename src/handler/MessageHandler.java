@@ -1,7 +1,7 @@
 package handler;
 
 import common.Message;
-import common.MessageType;
+
 import diffusing.DiffusingEngine;
 import snapshot.SnapshotEngine;
 
