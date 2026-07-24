@@ -2,6 +2,7 @@ package app;
 
 import node.Node;
 
+import java.util.Map;
 import java.util.Scanner;
 
 public class NodeRunner {
@@ -29,6 +30,10 @@ public class NodeRunner {
             node.startCommunication();
 
             System.out.println("\nNode " + node.getNodeId() + " is running on port " + node.getPort());
+            System.out.println("Neighbors:");
+            for (Map.Entry<Integer, Integer> entry : node.getNeighbors().entrySet()) {
+                System.out.println("Node " + entry.getKey() + " -> Port " + entry.getValue());
+            }
 
             while (true) {
                 System.out.println("\nSelect an action:");
