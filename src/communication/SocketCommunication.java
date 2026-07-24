@@ -66,7 +66,7 @@ public class SocketCommunication implements Communication {
     @Override
     public void stop() {
 
-        server.interrupt();
+        server.stopServer();
 
         System.out.println();
         System.out.println("=================================");

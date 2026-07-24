@@ -10,6 +10,7 @@ import java.net.Socket;
 public class Server extends Thread {
     private final int port;
     private final MessageHandler messageHandler;
+    private ServerSocket serverSocket;
 
     public Server(int port, MessageHandler messageHandler) {
         this.port = port;
@@ -21,7 +22,7 @@ public class Server extends Thread {
 
         try {
 
-            ServerSocket serverSocket = new ServerSocket(port);
+            serverSocket = new ServerSocket(port);
 
             while (!isInterrupted()) {
 
@@ -51,6 +52,17 @@ public class Server extends Thread {
             if (!isInterrupted()) {
                 System.out.println("Server Error : " + e.getMessage());
             }
+        }
+    }
+    
+    public void stopServer() {
+        interrupt();
+        try {
+            if (serverSocket != null) {
+                serverSocket.close();
+            }
+        } catch (Exception e) {
+            // Ignore
         }
     }
 }
