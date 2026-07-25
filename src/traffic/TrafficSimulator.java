@@ -3,7 +3,7 @@ package traffic;
 import common.Message;
 import common.MessageType;
 import communication.Communication;
-import node.Node;
+import node.TrafficControllerProcess;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,13 +14,13 @@ import java.util.Random;
  */
 public class TrafficSimulator extends Thread {
 
-    private Node node;
+    private TrafficControllerProcess node;
     private int nodeId;
     private Communication communication;
     private boolean running = true;
     private final Random random = new Random();
 
-    public TrafficSimulator(Node node) {
+    public TrafficSimulator(TrafficControllerProcess node) {
 
         this.node = node;
         this.nodeId = node.getNodeId();

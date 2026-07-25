@@ -6,7 +6,7 @@ import communication.Communication;
 import communication.Client;
 import communication.RegistryClient;
 import aggregator.SnapshotSerializer;
-import node.Node;
+import node.TrafficControllerProcess;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,7 +18,7 @@ import java.util.Set;
  */
 public class SnapshotEngine {
 
-    private Node node;
+    private TrafficControllerProcess node;
     private int nodeId;
     private Communication communication;
 
@@ -30,7 +30,7 @@ public class SnapshotEngine {
 
     private Map<Integer, ChannelState> channelStates;
 
-    public SnapshotEngine(Node node) {
+    public SnapshotEngine(TrafficControllerProcess node) {
 
         this.node = node;
         this.nodeId = node.getNodeId();
@@ -172,13 +172,14 @@ public class SnapshotEngine {
         System.out.println("Sending Snapshot Report to Aggregator...");
         
         try {
-            RegistryClient registryClient = new RegistryClient();
+            RegistryClient registryClient = node.getRegionNode().getRegistryClient();
             String aggHost = registryClient.getAggregatorHost();
             int aggPort = registryClient.getAggregatorPort();
+            int regionId = node.getRegionNode().getRegionId();
             
             if (aggHost != null && !aggHost.isEmpty() && aggPort > 0) {
                 String payload = SnapshotSerializer.serialize(report);
-                Message msg = new Message(MessageType.SNAPSHOT_REPORT, nodeId, 0, payload);
+                Message msg = new Message(MessageType.SNAPSHOT_REPORT, regionId, 0, payload);
                 Client client = new Client();
                 client.send(aggHost, aggPort, msg);
             } else {

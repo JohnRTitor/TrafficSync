@@ -1,11 +1,8 @@
 package app;
 
-import node.Node;
+import node.RegionNode;
+import node.TrafficControllerProcess;
 
-import common.Message;
-import common.MessageType;
-
-import java.util.Map;
 import java.util.Scanner;
 
 public class NodeRunner {
@@ -15,11 +12,10 @@ public class NodeRunner {
         Scanner scanner = new Scanner(System.in);
 
         System.out.println("==============================");
-        System.out.println(" Distributed Snapshot Node");
+        System.out.println(" Distributed Snapshot Region");
         System.out.println("==============================");
 
-        System.out.print("Enter Listening Port (e.g. 5001): ");
-
+        System.out.print("Enter Listening Port for Region (e.g. 5001): ");
         int port = scanner.nextInt();
 
         if (port < 1024 || port > 65535) {
@@ -29,73 +25,44 @@ public class NodeRunner {
         }
 
         try {
-            Node node = new Node(port);
-            node.startCommunication();
+            RegionNode regionNode = new RegionNode(port);
+            regionNode.startRegion("local_topology.txt");
 
-            System.out.println("\nNode " + node.getNodeId() + " is running on port " + node.getPort());
-            System.out.println("Neighbors:");
-            for (Map.Entry<Integer, Integer> entry : node.getNeighbors().entrySet()) {
-                System.out.println("Node " + entry.getKey() + " -> Port " + entry.getValue());
-            }
+            System.out.println("\nRegion " + regionNode.getRegionId() + " is running.");
 
             while (true) {
                 System.out.println("\nSelect an action:");
-                System.out.println("1. Start Traffic Simulator");
-                System.out.println("2. Stop Traffic Simulator");
-                System.out.println("3. Start Diffusing Computation");
-                System.out.println("4. Start Snapshot");
-                System.out.println("5. Print Local State");
-                System.out.println("6. Exit");
-                System.out.println("7. Send Manual Message");
-                System.out.println("8. Refresh Peers");
-                System.out.println("9. Ping Server");
+                System.out.println("1. Start Traffic Simulator on all controllers");
+                System.out.println("2. Stop Traffic Simulator on all controllers");
+                System.out.println("3. Trigger Diffusing Computation (Leader Election)");
+                System.out.println("4. Exit");
                 System.out.print("Choice: ");
 
                 int choice = scanner.nextInt();
 
                 if (choice == 1) {
-                    node.startTraffic();
+                    for (TrafficControllerProcess process : regionNode.getLocalProcesses().values()) {
+                        process.startTraffic();
+                    }
                 } else if (choice == 2) {
-                    node.stopTraffic();
+                    for (TrafficControllerProcess process : regionNode.getLocalProcesses().values()) {
+                        process.stopTraffic();
+                    }
                 } else if (choice == 3) {
-                    node.startDiffusingComputation();
+                    for (TrafficControllerProcess process : regionNode.getLocalProcesses().values()) {
+                        process.startDiffusingComputation();
+                    }
                 } else if (choice == 4) {
-                    node.getSnapshotEngine().startSnapshot();
-                } else if (choice == 5) {
-                    System.out.println("\n==================================");
-                    System.out.println("LOCAL STATE OF NODE " + node.getNodeId());
-                    System.out.println("==================================");
-                    System.out.println(node.getSnapshotEngine().getLocalState());
-                } else if (choice == 6) {
-                    node.leaveNetwork();
-                    node.stopCommunication();
+                    regionNode.stopRegion();
                     System.out.println("Exiting...");
                     break;
-                } else if (choice == 7) {
-                    System.out.print("Enter Destination Node ID: ");
-                    int dest = scanner.nextInt();
-                    scanner.nextLine(); // consume newline
-                    System.out.print("Enter Message: ");
-                    String text = scanner.nextLine();
-                    
-                    Message msg = new Message(MessageType.APPLICATION, node.getNodeId(), dest, text);
-                    node.getCommunication().send(msg);
-                } else if (choice == 8) {
-                    node.refreshPeers();
-                    System.out.println("Neighbors:");
-                    for (Map.Entry<Integer, Integer> entry : node.getNeighbors().entrySet()) {
-                        System.out.println("Node " + entry.getKey() + " -> Port " + entry.getValue());
-                    }
-                } else if (choice == 9) {
-                    node.pingServer();
-                    System.out.println("Ping sent to server.");
                 } else {
                     System.out.println("Invalid Choice.");
                 }
             }
 
         } catch (Exception e) {
-            System.out.println("Error initializing Node: " + e.getMessage());
+            System.out.println("Error initializing RegionNode: " + e.getMessage());
             e.printStackTrace();
         }
 
