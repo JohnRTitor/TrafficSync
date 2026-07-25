@@ -29,7 +29,7 @@ public class Node {
 
     public Node(int listeningPort) {
 
-        if (!registryClient.register("localhost", listeningPort)) {
+        if (!registryClient.register("104.214.168.255", listeningPort)) {
             throw new RuntimeException("Registration Failed");
         }
 

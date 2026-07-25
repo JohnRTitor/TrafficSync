@@ -48,13 +48,17 @@ public class SocketCommunication implements Communication {
      */
     @Override
     public void send(Message message) {
+
         // Refresh peers before sending
         registryClient.loadPeers();
-        
-        Integer receiverPort = registryClient.getNeighbors().get(message.getReceiverId());
-        
-        if (receiverPort != null && receiverPort > 0) {
-            client.send("localhost", receiverPort, message);
+
+        String receiverHost = registryClient.getHost(message.getReceiverId());
+
+        int receiverPort = registryClient.getNeighborPort(message.getReceiverId());
+
+        if (receiverPort > 0 && receiverHost != null && !receiverHost.isBlank()) {
+            client.send(receiverHost, receiverPort, message);
+
         } else {
             System.out.println("Destination Node " + message.getReceiverId() + " is not registered or not a neighbor.");
         }

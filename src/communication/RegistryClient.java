@@ -12,14 +12,19 @@ import java.util.Set;
 
 public class RegistryClient {
 
-    private static final String SERVER = "http://localhost:8080";
+    private static final String SERVER = "http://104.214.168.255:8080";
 
     private int nodeId;
     private String host;
     private int port;
 
+    // Neighbor ID -> Host
+    private final Map<Integer, String> neighborHosts = new HashMap<>();
+
     // Neighbor ID -> Port
-    private final Map<Integer, Integer> neighbors = new HashMap<>();
+    private final Map<Integer, Integer> neighborPorts = new HashMap<>();
+
+    // Incoming neighbors
     private final Set<Integer> incomingNeighbors = new HashSet<>();
 
     public boolean register(String host, int port) {
@@ -69,10 +74,14 @@ public class RegistryClient {
 
         String list = json.substring(json.indexOf("[") + 1, json.indexOf("]"));
 
-        neighbors.clear();
+        neighborHosts.clear();
+        neighborPorts.clear();
         if (!list.isBlank()) {
             for (String value : list.split(",")) {
-                neighbors.put(Integer.parseInt(value.trim()), 0);
+                int id = Integer.parseInt(value.trim());
+
+                neighborHosts.put(id, "");
+                neighborPorts.put(id, 0);
             }
         }
         
@@ -111,16 +120,32 @@ public class RegistryClient {
             reader.close();
             String json = response.toString();
 
-            for (Integer id : neighbors.keySet()) {
+            for (Integer id : neighborPorts.keySet()) {
                 String token = "\"id\":" + id;
                 int index = json.indexOf(token);
                 if (index == -1) continue;
 
+                int hostIndex = json.indexOf("\"host\":\"", index);
+
+                if (hostIndex == -1) {
+                    continue;
+                }
+
+                int hostStart = hostIndex + 8;
+                int hostEnd = json.indexOf("\"", hostStart);
+
+                String peerHost = json.substring(hostStart, hostEnd);
+
+                // Read Port
                 int portIndex = json.indexOf("\"port\":", index);
                 int end = json.indexOf("}", portIndex);
-                int peerPort = Integer.parseInt(json.substring(portIndex + 7, end).trim());
 
-                neighbors.put(id, peerPort);
+                int peerPort =
+                        Integer.parseInt(
+                                json.substring(portIndex + 7, end).trim());
+
+                neighborHosts.put(id, peerHost);
+                neighborPorts.put(id, peerPort);
             }
 
         } catch (Exception e) {
@@ -150,7 +175,7 @@ public class RegistryClient {
     }
 
     public Map<Integer, Integer> getNeighbors() {
-        return neighbors;
+        return neighborPorts;
     }
     
     public String getAggregatorHost() {
@@ -219,5 +244,13 @@ public class RegistryClient {
         } catch (Exception e) {
             System.out.println("Leave failed: " + e.getMessage());
         }
+    }
+
+    public String getHost(int nodeId) {
+        return neighborHosts.getOrDefault(nodeId, "");
+    }
+
+    public int getNeighborPort(int nodeId) {
+        return neighborPorts.getOrDefault(nodeId, 0);
     }
 }
