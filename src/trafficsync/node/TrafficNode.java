@@ -19,7 +19,9 @@ public class TrafficNode {
     private final String regionId;
     private final String serverHost;
     private final int serverPort;
+    private final int nodePort;
     private final List<String> neighbors;
+    private final List<String> peers = new ArrayList<>();
     private final int controllerCount;
     private final TerminalScreen screen;
 
@@ -30,18 +32,16 @@ public class TrafficNode {
     private volatile boolean registered = false;
 
     public TrafficNode(String nodeId, String regionId, String serverHost, int serverPort, 
-                       String neighborsStr, int controllerCount, TerminalScreen screen) {
+                       int nodePort, int controllerCount, TerminalScreen screen) {
         this.nodeId = nodeId;
         this.regionId = regionId;
         this.serverHost = serverHost;
         this.serverPort = serverPort;
+        this.nodePort = nodePort;
         this.controllerCount = controllerCount;
         this.screen = screen;
         
         this.neighbors = new ArrayList<>();
-        if (neighborsStr != null && !neighborsStr.trim().isEmpty()) {
-            this.neighbors.addAll(Arrays.asList(neighborsStr.split(",")));
-        }
     }
 
     public void start() {
@@ -53,7 +53,7 @@ public class TrafficNode {
             snapshotManager = new ChandyLamportManager(nodeId, neighbors, vpsConnection, screen);
 
             // Register with VPS
-            String payload = String.join(",", neighbors);
+            String payload = nodePort + "," + controllerCount + ",ACTIVE";
             Message regMsg = new Message(MessageType.REGISTER, nodeId, "VPS", regionId, payload);
             vpsConnection.send(regMsg);
             
@@ -98,6 +98,12 @@ public class TrafficNode {
                 screen.setStatus("Connection", "CONNECTED");
                 startControllers();
                 break;
+            case TOPOLOGY:
+                updateTopology((String) msg.getPayload());
+                break;
+            case PEER_LIST:
+                updatePeers((String) msg.getPayload());
+                break;
             case TRAFFIC_UPDATE:
             case ACCIDENT_ALERT:
                 EventQueue.network("Received " + msg.getType() + " from " + msg.getSenderId());
@@ -112,6 +118,32 @@ public class TrafficNode {
             default:
                 EventQueue.warn("Unhandled message type: " + msg.getType());
         }
+    }
+    
+    private void updateTopology(String payload) {
+        neighbors.clear();
+        if (payload != null && !payload.isEmpty()) {
+            neighbors.addAll(Arrays.asList(payload.split(",")));
+        }
+        screen.setStatus("Neighbors", neighbors.isEmpty() ? "None" : String.join(",", neighbors));
+        EventQueue.info("Topology updated: " + neighbors);
+    }
+    
+    private void updatePeers(String payload) {
+        peers.clear();
+        if (payload != null && !payload.isEmpty()) {
+            peers.addAll(Arrays.asList(payload.split(",")));
+        }
+        screen.setStatus("Peers", String.valueOf(peers.size()));
+        EventQueue.info("Peer list updated: " + peers);
+    }
+    
+    public void printPeers() {
+        EventQueue.info("All Known Sites: " + String.join(", ", peers));
+    }
+    
+    public void printNeighbors() {
+        EventQueue.info("Logical Neighbors: " + String.join(", ", neighbors));
     }
 
     private void handleDisconnect(TCPConnection connection) {

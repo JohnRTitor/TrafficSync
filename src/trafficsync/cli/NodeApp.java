@@ -17,20 +17,22 @@ public class NodeApp {
         String serverHost = config.get("SERVER_HOST", "127.0.0.1");
         int serverPort = config.getInt("SERVER_PORT", 9000);
         int controllers = config.getInt("CONTROLLER_COUNT", 1);
-        String neighbors = config.get("NEIGHBORS", "");
+        int nodePort = config.getInt("NODE_PORT", 5000);
         
-        String menu = "[q] Quit Task | [s] Snapshot | [t] Send Traffic | [c] Clear Logs | [x] Exit";
+        String menu = "[q] Quit Task | [s] Snapshot | [t] Send Traffic | [p] List Sites | [n] Show Neighbors | [c] Clear Logs | [x] Exit";
         TerminalScreen screen = new TerminalScreen("Smart Traffic Node: " + nodeId, menu);
         screen.setStatus("Server", serverHost + ":" + serverPort);
         screen.setStatus("Region", regionId);
         screen.setStatus("Controllers", String.valueOf(controllers));
-        screen.setStatus("Neighbors", neighbors.isEmpty() ? "None" : neighbors);
+        screen.setStatus("Node Port", String.valueOf(nodePort));
+        screen.setStatus("Peers", "0");
+        screen.setStatus("Neighbors", "None");
         screen.setStatus("Connection", "DISCONNECTED");
         
         TerminalRenderer renderer = new TerminalRenderer(screen);
         renderer.start();
         
-        TrafficNode node = new TrafficNode(nodeId, regionId, serverHost, serverPort, neighbors, controllers, screen);
+        TrafficNode node = new TrafficNode(nodeId, regionId, serverHost, serverPort, nodePort, controllers, screen);
         node.start();
         
         KeyboardInput input = new KeyboardInput(screen, command -> {
@@ -46,6 +48,12 @@ public class NodeApp {
                     break;
                 case "t":
                     node.sendTrafficUpdate("Manual traffic update from " + nodeId);
+                    break;
+                case "p":
+                    node.printPeers();
+                    break;
+                case "n":
+                    node.printNeighbors();
                     break;
                 case "c":
                     screen.clearLogs();

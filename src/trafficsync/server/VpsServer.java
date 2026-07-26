@@ -82,6 +82,7 @@ public class VpsServer {
         if (toRemove != null) {
             registry.removeNode(toRemove);
             EventQueue.warn("Node disconnected: " + toRemove);
+            broadcastTopologyAndPeers();
             updateScreenStatus();
         }
     }
@@ -111,18 +112,45 @@ public class VpsServer {
         String nodeId = msg.getSenderId();
         String regionId = msg.getRegionId();
         
-        String neighborsStr = (String) msg.getPayload();
-        Set<String> neighbors = new HashSet<>();
-        if (neighborsStr != null && !neighborsStr.isEmpty()) {
-            neighbors.addAll(Arrays.asList(neighborsStr.split(",")));
+        String payloadStr = (String) msg.getPayload();
+        int nodePort = 0;
+        int controllerCount = 0;
+        String status = "UNKNOWN";
+        
+        if (payloadStr != null && !payloadStr.isEmpty()) {
+            String[] parts = payloadStr.split(",");
+            if (parts.length >= 1) nodePort = Integer.parseInt(parts[0]);
+            if (parts.length >= 2) controllerCount = Integer.parseInt(parts[1]);
+            if (parts.length >= 3) status = parts[2];
         }
         
-        registry.registerNode(nodeId, regionId, neighbors, connection);
+        registry.registerNode(nodeId, regionId, nodePort, controllerCount, status, connection);
         connection.setConnectionId(nodeId);
         EventQueue.network("REGISTER successful: " + nodeId + " (Region: " + regionId + ")");
         
         connection.send(new Message(MessageType.REGISTER_ACK, "VPS", nodeId, regionId, "OK"));
+        
+        broadcastTopologyAndPeers();
         updateScreenStatus();
+    }
+    
+    private void broadcastTopologyAndPeers() {
+        registry.buildGlobalTopology();
+        Set<String> allNodes = registry.getNodes();
+        String peersPayload = String.join(",", allNodes);
+        
+        for (String nodeId : allNodes) {
+            TCPConnection conn = registry.getConnection(nodeId);
+            if (conn != null) {
+                // Send PEER_LIST
+                conn.send(new Message(MessageType.PEER_LIST, "VPS", nodeId, null, peersPayload));
+                
+                // Send TOPOLOGY
+                Set<String> neighbors = registry.getTopology().get(nodeId);
+                String topoPayload = neighbors != null ? String.join(",", neighbors) : "";
+                conn.send(new Message(MessageType.TOPOLOGY, "VPS", nodeId, null, topoPayload));
+            }
+        }
     }
     
     private void relayMessage(Message msg) {

@@ -12,5 +12,6 @@ public enum MessageType {
     SNAPSHOT_RESPONSE,
     PING,
     STATUS_REQUEST,
-    STATUS_RESPONSE
+    STATUS_RESPONSE,
+    PEER_LIST
 }
