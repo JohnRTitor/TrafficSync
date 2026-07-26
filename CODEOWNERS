@@ -1,12 +1,8 @@
-# CODEOWNERS
-# Based on current file structure and responsibilities
-
 # Person 1 - VPS bootstrap + registry
-# Plain HTTP server, topology.json, /register, /peers
+# Plain HTTP server for /register, /peers
 src/trafficsync/server/NodeRegistry.java @Kirtika04
 src/trafficsync/server/HttpInspector.java @Kirtika04
 src/trafficsync/cli/ServerApp.java @Kirtika04
-src/trafficsync/config/ @Kirtika04
 
 # Person 2 - Site communication layer
 # ServerSocket, connection handling, Message passing
@@ -23,5 +19,7 @@ src/trafficsync/terminal/ @suchi974
 # Person 4 - Aggregation + integration
 # SnapshotCollector, coordinator logic, integration testing
 src/trafficsync/server/VpsServer.java @JohnRTitor
+src/trafficsync/config/ @JohnRTitor
+*.env.example @JohnRTitor
 /README.md @JohnRTitor
-*.env @JohnRTitor
+scripts/ @JohnRTitor
