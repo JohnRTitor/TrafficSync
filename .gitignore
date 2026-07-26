@@ -31,3 +31,6 @@ bin/
 
 ### Environment variables ###
 *.env
+
+### Snapshots ###
+snapshots

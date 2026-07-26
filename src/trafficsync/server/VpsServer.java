@@ -7,8 +7,12 @@ import trafficsync.terminal.TerminalScreen;
 import trafficsync.transport.TCPConnection;
 import trafficsync.transport.TCPServer;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -205,27 +209,54 @@ public class VpsServer {
         for (String nodeId : registry.getNodes()) {
             TCPConnection conn = registry.getConnection(nodeId);
             if (conn != null) {
-                conn.send(new Message(MessageType.SNAPSHOT_TRIGGER, "VPS", nodeId, null, snapId));
+                conn.send(new Message(MessageType.SNAPSHOT_TRIGGER, "VPS", nodeId, null, null, System.currentTimeMillis(), snapId));
             }
         }
     }
 
     private void handleSnapshotResponse(Message msg) {
         String state = (String) msg.getPayload();
-        snapshotStates.put(msg.getSenderId(), state);
-        EventQueue.snapshot("Received snapshot state from " + msg.getSenderId() + ": " + state);
         
-        if (currentSnapshotId == null) return;
+        synchronized (this) {
+            snapshotStates.put(msg.getSenderId(), state);
+            EventQueue.snapshot("Received snapshot state from " + msg.getSenderId() + ".");
+            
+            if (currentSnapshotId == null) return;
+            
+            int totalNodes = registry.getNodes().size();
+            int received = snapshotStates.size();
+            
+            if (received >= totalNodes) {
+                EventQueue.snapshot("Global Snapshot Complete.");
+                screen.removeTask(currentSnapshotId);
+                
+                saveAggregatedSnapshot(currentSnapshotId, snapshotStates);
+                
+                currentSnapshotId = null;
+            } else {
+                screen.updateTask(currentSnapshotId, (double) received / totalNodes, "Waiting for node responses... " + received + "/" + totalNodes);
+            }
+        }
+    }
+
+    private void saveAggregatedSnapshot(String snapshotId, ConcurrentHashMap<String, String> states) {
+        File dir = new File("snapshots");
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
         
-        int totalNodes = registry.getNodes().size();
-        int received = snapshotStates.size();
-        
-        if (received >= totalNodes) {
-            EventQueue.snapshot("Global Snapshot Complete.");
-            screen.removeTask(currentSnapshotId);
-            currentSnapshotId = null;
-        } else {
-            screen.updateTask(currentSnapshotId, (double) received / totalNodes, "Waiting for node responses... " + received + "/" + totalNodes);
+        File file = new File(dir, snapshotId + ".txt");
+        try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
+            writer.println("Global Snapshot ID: " + snapshotId);
+            writer.println("==================================================");
+            for (Map.Entry<String, String> entry : states.entrySet()) {
+                writer.println("Node: " + entry.getKey());
+                writer.println("State: " + entry.getValue());
+                writer.println("--------------------------------------------------");
+            }
+            EventQueue.snapshot("Aggregated snapshot saved to " + file.getPath());
+        } catch (IOException e) {
+            EventQueue.error("Failed to save aggregated snapshot: " + e.getMessage());
         }
     }
 }
