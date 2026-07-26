@@ -74,6 +74,24 @@ public class TrafficNode {
         }
         EventQueue.info("Node stopped.");
     }
+
+    public void reconnect() {
+        if (registered) {
+            EventQueue.warn("Already connected to VPS.");
+            return;
+        }
+        
+        for (ControllerThread ct : controllers) {
+            ct.stopRunning();
+        }
+        controllers.clear();
+        
+        if (communicator != null) {
+            communicator.stop();
+        }
+        
+        start();
+    }
     
     public void triggerLocalSnapshot() {
         if (!registered) {
@@ -270,10 +288,6 @@ public class TrafficNode {
     
     public void printPeers() {
         EventQueue.info("All Known Sites: " + String.join(", ", peers));
-    }
-    
-    public void printNeighbors() {
-        // Obsolete command now
     }
 
     private void handleDisconnect() {

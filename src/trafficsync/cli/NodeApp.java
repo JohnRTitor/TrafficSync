@@ -19,14 +19,13 @@ public class NodeApp {
         int controllers = config.getInt("CONTROLLER_COUNT", 1);
         int nodePort = config.getInt("NODE_PORT", 5000);
         
-        String menu = "[s] Local Snapshot | [t] Toggle Traffic | [m <id> <msg>] Send Manual Msg | [p] List Sites | [n] Show Neighbors | [c] Clear Logs | [x] Exit";
+        String menu = "[s] Local Snapshot | [t] Toggle Traffic | [m <id> <msg>] Send Manual Msg | [p] List Sites | [c] Clear Logs | [r] Reconnect | [x] Exit";
         TerminalScreen screen = new TerminalScreen("Smart Traffic Node: " + nodeId, menu);
         screen.setStatus("Server", serverHost + ":" + serverPort);
         screen.setStatus("Region", regionId);
         screen.setStatus("Controllers", String.valueOf(controllers));
         screen.setStatus("Node Port", String.valueOf(nodePort));
         screen.setStatus("Peers", "0");
-        screen.setStatus("Neighbors", "None");
         screen.setStatus("Connection", "DISCONNECTED");
         
         TerminalRenderer renderer = new TerminalRenderer(screen);
@@ -62,11 +61,11 @@ public class NodeApp {
                 case "p":
                     node.printPeers();
                     break;
-                case "n":
-                    node.printNeighbors();
-                    break;
                 case "c":
                     screen.clearLogs();
+                    break;
+                case "r":
+                    node.reconnect();
                     break;
                 default:
                     EventQueue.warn("Unknown command: " + command);
