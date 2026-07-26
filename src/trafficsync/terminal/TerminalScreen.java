@@ -3,16 +3,32 @@ package trafficsync.terminal;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.LinkedHashMap;
 
 public class TerminalScreen {
+    
+    public static class Task {
+        public final String id;
+        public final String title;
+        public double progress;
+        public String status;
+        public final Runnable onCancel;
+
+        public Task(String id, String title, double progress, String status, Runnable onCancel) {
+            this.id = id;
+            this.title = title;
+            this.progress = progress;
+            this.status = status;
+            this.onCancel = onCancel;
+        }
+    }
+
     private final String title;
     private final Map<String, String> statusFields = new ConcurrentHashMap<>();
     private final LinkedList<Event> logs = new LinkedList<>();
     private final int MAX_LOGS = 15;
     
-    private volatile String currentTask = "Idle";
-    private volatile double taskProgress = -1; // -1 means no progress bar
-    private volatile String taskStatus = "";
+    private final Map<String, Task> activeTasks = new LinkedHashMap<>();
     private volatile String promptInput = "";
     
     private final String menu;
@@ -26,10 +42,52 @@ public class TerminalScreen {
         statusFields.put(key, value);
     }
 
+    public synchronized void addTask(Task task) {
+        activeTasks.put(task.id, task);
+    }
+
+    public synchronized void updateTask(String id, double progress, String status) {
+        Task t = activeTasks.get(id);
+        if (t != null) {
+            t.progress = progress;
+            t.status = status;
+        }
+    }
+
+    public synchronized void removeTask(String id) {
+        activeTasks.remove(id);
+    }
+
+    public synchronized void cancelLatestTask() {
+        if (!activeTasks.isEmpty()) {
+            // Get the last added task
+            String lastId = null;
+            for (String id : activeTasks.keySet()) {
+                lastId = id;
+            }
+            if (lastId != null) {
+                cancelTask(lastId);
+            }
+        } else {
+            EventQueue.warn("No active tasks to cancel.");
+        }
+    }
+
+    public synchronized void cancelTask(String id) {
+        Task t = activeTasks.remove(id);
+        if (t != null) {
+            if (t.onCancel != null) {
+                t.onCancel.run();
+            }
+            EventQueue.info("Cancelled task: " + t.title);
+        } else {
+            EventQueue.warn("Task not found: " + id);
+        }
+    }
+
+    @Deprecated
     public void setTask(String task, double progress, String status) {
-        this.currentTask = task;
-        this.taskProgress = progress;
-        this.taskStatus = status;
+        // Keeping for backward compatibility temporarily if needed, but doing nothing.
     }
     
     public void setPromptInput(String input) {
@@ -66,20 +124,27 @@ public class TerminalScreen {
         sb.append(menu).append(Ansi.CLEAR_LINE).append("\n");
         sb.append(Ansi.CYAN).append("---------------------------------------------------------------------").append(Ansi.CLEAR_LINE).append("\n").append(Ansi.RESET);
         
-        // Current Task
-        sb.append("Status:").append(Ansi.CLEAR_LINE).append("\n");
-        sb.append(currentTask).append(Ansi.CLEAR_LINE).append("\n");
-        if (taskProgress >= 0) {
-            int totalBars = 20;
-            int filled = (int) (taskProgress * totalBars);
-            sb.append("[");
-            for (int i = 0; i < totalBars; i++) {
-                sb.append(i < filled ? "=" : (i == filled ? ">" : "."));
-            }
-            sb.append("] ").append(String.format("%d%%", (int)(taskProgress * 100))).append(Ansi.CLEAR_LINE).append("\n");
-            sb.append(taskStatus).append(Ansi.CLEAR_LINE).append("\n");
+        // Active Tasks
+        sb.append("Active Tasks:").append(Ansi.CLEAR_LINE).append("\n");
+        if (activeTasks.isEmpty()) {
+            sb.append("Idle").append(Ansi.CLEAR_LINE).append("\n");
+            sb.append(Ansi.CLEAR_LINE).append("\n");
         } else {
-            sb.append(Ansi.CLEAR_LINE).append("\n").append(Ansi.CLEAR_LINE).append("\n");
+            for (Task t : activeTasks.values()) {
+                sb.append("[").append(t.id).append("] ").append(t.title).append(Ansi.CLEAR_LINE).append("\n");
+                if (t.progress >= 0) {
+                    int totalBars = 20;
+                    int filled = (int) (t.progress * totalBars);
+                    sb.append("  [");
+                    for (int i = 0; i < totalBars; i++) {
+                        sb.append(i < filled ? "=" : (i == filled ? ">" : "."));
+                    }
+                    sb.append("] ").append(String.format("%d%%", (int)(t.progress * 100))).append(Ansi.CLEAR_LINE).append("\n");
+                    sb.append("  ").append(t.status).append(Ansi.CLEAR_LINE).append("\n");
+                } else {
+                    sb.append("  ").append(t.status).append(Ansi.CLEAR_LINE).append("\n");
+                }
+            }
         }
         
         sb.append(Ansi.CYAN).append("---------------------------------------------------------------------").append(Ansi.CLEAR_LINE).append("\n").append(Ansi.RESET);
@@ -108,8 +173,10 @@ public class TerminalScreen {
               .append(e.getMessage()).append(Ansi.RESET).append(Ansi.CLEAR_LINE).append("\n");
         }
         
-        // Fill empty lines to keep height constant
-        for (int i = logs.size(); i < MAX_LOGS; i++) {
+        // Fill empty lines to keep height constant (simplified for dynamic tasks)
+        // Adjust this if UI jumps too much, but dynamic task lists naturally change height.
+        int requiredPadding = MAX_LOGS - logs.size();
+        for (int i = 0; i < requiredPadding; i++) {
             sb.append(Ansi.CLEAR_LINE).append("\n");
         }
         

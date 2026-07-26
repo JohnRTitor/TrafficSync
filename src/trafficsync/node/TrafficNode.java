@@ -5,6 +5,8 @@ import trafficsync.common.MessageType;
 import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
+import trafficsync.terminal.TerminalScreen.Task;
+import java.util.concurrent.atomic.AtomicBoolean;
 import trafficsync.transport.RegionCommunicator;
 
 import java.io.IOException;
@@ -26,6 +28,10 @@ public class TrafficNode {
     
     private final Map<String, List<String>> threadTopology = new HashMap<>();
     private final Map<String, List<String>> incomingThreadTopology = new HashMap<>();
+    
+    private volatile boolean snapshotInProgress = false;
+    private String currentSnapshotId = null;
+    private final Queue<Message> pendingSnapshotTriggers = new LinkedList<>();
     private final Map<String, String> localSnapshotStates = new ConcurrentHashMap<>();
     
     private volatile boolean registered = false;
@@ -68,8 +74,48 @@ public class TrafficNode {
         EventQueue.info("Node stopped.");
     }
     
-    public void triggerSnapshot() {
-        EventQueue.warn("Snapshots must now be triggered from the VPS Server CLI.");
+    public void triggerLocalSnapshot() {
+        if (!registered) {
+            EventQueue.warn("Cannot trigger snapshot: Node not registered with VPS.");
+            return;
+        }
+        String localSnapshotId = "LOCAL-" + System.currentTimeMillis();
+        handleSnapshotTrigger(new Message(MessageType.SNAPSHOT_TRIGGER, "LOCAL", nodeId, null, null, System.currentTimeMillis(), localSnapshotId));
+    }
+    
+    public void triggerTrafficUpdate() {
+        if (controllers.isEmpty()) return;
+        ControllerThread randomCt = controllers.get((int)(Math.random() * controllers.size()));
+        List<String> neighbors = threadTopology.get(randomCt.getThreadName());
+        
+        if (neighbors != null && !neighbors.isEmpty()) {
+            String target = neighbors.get((int)(Math.random() * neighbors.size()));
+            String payload = "Manual traffic update from Node CLI";
+            
+            String taskId = "TRAF-" + System.currentTimeMillis();
+            AtomicBoolean cancelled = new AtomicBoolean(false);
+            Runnable onCancel = () -> {
+                cancelled.set(true);
+            };
+            screen.addTask(new Task(taskId, "Traffic to " + target, 0.0, "Preparing...", onCancel));
+            
+            new Thread(() -> {
+                try {
+                    for (int i = 0; i <= 10; i++) {
+                        if (cancelled.get()) return;
+                        screen.updateTask(taskId, i / 10.0, "Sending in " + (3000 - i*300) + "ms");
+                        Thread.sleep(300);
+                    }
+                    if (!cancelled.get()) {
+                        routeThreadMessage(new Message(MessageType.TRAFFIC_UPDATE, randomCt.getThreadName(), target, null, payload));
+                        EventQueue.info("Triggered manual traffic update from " + randomCt.getThreadName() + " to " + target);
+                        screen.removeTask(taskId);
+                    }
+                } catch (Exception e) {}
+            }).start();
+        } else {
+            EventQueue.warn("No outgoing neighbors for " + randomCt.getThreadName() + " to send traffic to.");
+        }
     }
 
     public void sendManualMessage(String target, String text) {
@@ -87,9 +133,28 @@ public class TrafficNode {
                 }
             }
         }
+        String taskId = "MSG-" + System.currentTimeMillis();
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        Runnable onCancel = () -> {
+            cancelled.set(true);
+        };
+        screen.addTask(new Task(taskId, "Msg to " + resolvedTarget, 0.0, "Preparing...", onCancel));
         
-        communicator.sendMessage(MessageType.MANUAL_MESSAGE, resolvedTarget, text);
-        EventQueue.network("Sent MANUAL_MESSAGE to " + resolvedTarget);
+        String finalTarget = resolvedTarget;
+        new Thread(() -> {
+            try {
+                for (int i = 0; i <= 10; i++) {
+                    if (cancelled.get()) return;
+                    screen.updateTask(taskId, i / 10.0, "Sending in " + (3000 - i*300) + "ms");
+                    Thread.sleep(300);
+                }
+                if (!cancelled.get()) {
+                    communicator.sendMessage(MessageType.MANUAL_MESSAGE, finalTarget, text);
+                    EventQueue.network("Sent MANUAL_MESSAGE to " + finalTarget);
+                    screen.removeTask(taskId);
+                }
+            } catch (Exception e) {}
+        }).start();
     }
 
     private void handleMessage(Message msg) {
@@ -121,8 +186,35 @@ public class TrafficNode {
     }
     
     private void handleSnapshotTrigger(Message msg) {
+        if (snapshotInProgress) {
+            pendingSnapshotTriggers.add(msg);
+            EventQueue.info("Snapshot already in progress. Scheduling trigger for later.");
+            return;
+        }
+        
+        snapshotInProgress = true;
+        currentSnapshotId = msg.getSnapshotId();
         localSnapshotStates.clear();
-        EventQueue.snapshot("Received SNAPSHOT_TRIGGER from VPS.");
+        
+        String snapId = currentSnapshotId;
+        Runnable onCancel = () -> {
+            snapshotInProgress = false;
+            currentSnapshotId = null;
+            localSnapshotStates.clear();
+            for (ControllerThread ct : controllers) {
+                ct.abortSnapshot();
+            }
+            if (!pendingSnapshotTriggers.isEmpty()) {
+                handleSnapshotTrigger(pendingSnapshotTriggers.poll());
+            }
+        };
+        screen.addTask(new Task(snapId, "Local Snapshot", -1, "Waiting for markers...", onCancel));
+        
+        if (msg.getSenderId().equals("LOCAL")) {
+            EventQueue.snapshot("Initiating Local Snapshot (ID: " + currentSnapshotId + ")");
+        } else {
+            EventQueue.snapshot("Received SNAPSHOT_TRIGGER from VPS (ID: " + currentSnapshotId + ")");
+        }
         
         List<String> validInitiators = new ArrayList<>();
         for (String node : threadTopology.keySet()) {
@@ -134,9 +226,12 @@ public class TrafficNode {
         if (!validInitiators.isEmpty()) {
             String initiator = validInitiators.get((int)(Math.random() * validInitiators.size()));
             EventQueue.snapshot("Selected initiator " + initiator + " for local snapshot.");
-            routeThreadMessage(new Message(MessageType.START_SNAPSHOT, "NODE", initiator, regionId, null, System.currentTimeMillis(), msg.getSnapshotId()));
+            routeThreadMessage(new Message(MessageType.START_SNAPSHOT, "NODE", initiator, regionId, null, System.currentTimeMillis(), currentSnapshotId));
         } else {
             EventQueue.error("No valid initiator found in local topology!");
+            // Free the lock since we failed to start
+            snapshotInProgress = false;
+            currentSnapshotId = null;
         }
     }
 
@@ -174,6 +269,11 @@ public class TrafficNode {
     }
     
     private synchronized void handleLocalSnapshotDone(Message msg) {
+        if (currentSnapshotId == null || !currentSnapshotId.equals(msg.getSnapshotId())) {
+            // Ignore stale snapshot messages
+            return;
+        }
+        
         localSnapshotStates.put(msg.getSenderId(), (String)msg.getPayload());
         if (localSnapshotStates.size() == controllerCount) {
             StringBuilder sb = new StringBuilder();
@@ -183,8 +283,23 @@ public class TrafficNode {
             }
             sb.append("]");
             
-            communicator.sendMessage(MessageType.SNAPSHOT_RESPONSE, "VPS", sb.toString());
-            EventQueue.snapshot("Sent combined regional snapshot to VPS");
+            if (currentSnapshotId.startsWith("LOCAL-")) {
+                EventQueue.snapshot("Local Snapshot Result: " + sb.toString());
+            } else {
+                communicator.sendMessage(MessageType.SNAPSHOT_RESPONSE, "VPS", sb.toString());
+                EventQueue.snapshot("Sent combined regional snapshot to VPS");
+            }
+            
+            screen.removeTask(currentSnapshotId);
+            
+            // Clean up and check queue
+            snapshotInProgress = false;
+            currentSnapshotId = null;
+            
+            if (!pendingSnapshotTriggers.isEmpty()) {
+                Message nextTrigger = pendingSnapshotTriggers.poll();
+                handleSnapshotTrigger(nextTrigger);
+            }
         }
     }
     

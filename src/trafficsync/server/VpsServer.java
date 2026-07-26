@@ -18,6 +18,7 @@ public class VpsServer {
     private TCPServer tcpServer;
     private final NodeRegistry registry = new NodeRegistry();
     private final ConcurrentHashMap<String, String> snapshotStates = new ConcurrentHashMap<>();
+    private String currentSnapshotId = null;
 
     public VpsServer(int port, TerminalScreen screen) {
         this.port = port;
@@ -164,15 +165,22 @@ public class VpsServer {
     }
     
     public void triggerGlobalSnapshot() {
-        String snapshotId = "SNAP-" + System.currentTimeMillis();
+        currentSnapshotId = "SNAP-" + System.currentTimeMillis();
         snapshotStates.clear();
-        EventQueue.snapshot("Triggering global snapshot: " + snapshotId);
-        screen.setTask("Snapshot", 0.0, "Waiting for node responses...");
+        EventQueue.snapshot("Triggering global snapshot: " + currentSnapshotId);
+        
+        String snapId = currentSnapshotId;
+        Runnable onCancel = () -> {
+            screen.removeTask(snapId);
+            snapshotStates.clear();
+            currentSnapshotId = null;
+        };
+        screen.addTask(new TerminalScreen.Task(snapId, "Global Snapshot", 0.0, "Waiting for node responses...", onCancel));
         
         for (String nodeId : registry.getNodes()) {
             TCPConnection conn = registry.getConnection(nodeId);
             if (conn != null) {
-                conn.send(new Message(MessageType.SNAPSHOT_TRIGGER, "VPS", nodeId, null, snapshotId));
+                conn.send(new Message(MessageType.SNAPSHOT_TRIGGER, "VPS", nodeId, null, snapId));
             }
         }
     }
@@ -182,14 +190,17 @@ public class VpsServer {
         snapshotStates.put(msg.getSenderId(), state);
         EventQueue.snapshot("Received snapshot state from " + msg.getSenderId() + ": " + state);
         
+        if (currentSnapshotId == null) return;
+        
         int totalNodes = registry.getNodes().size();
         int received = snapshotStates.size();
         
         if (received >= totalNodes) {
-            screen.setTask("Snapshot", 1.0, "All nodes reported.");
             EventQueue.snapshot("Global Snapshot Complete.");
+            screen.removeTask(currentSnapshotId);
+            currentSnapshotId = null;
         } else {
-            screen.setTask("Snapshot", (double) received / totalNodes, "Waiting for node responses... " + received + "/" + totalNodes);
+            screen.updateTask(currentSnapshotId, (double) received / totalNodes, "Waiting for node responses... " + received + "/" + totalNodes);
         }
     }
 }

@@ -3,6 +3,7 @@ package trafficsync.node;
 import trafficsync.common.Message;
 import trafficsync.common.MessageType;
 import trafficsync.snapshot.ChandyLamportManager;
+import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
 
 import java.util.List;
@@ -32,6 +33,10 @@ public class ControllerThread extends Thread {
 
     public void enqueueMessage(Message msg) {
         inbox.offer(msg);
+    }
+
+    public void abortSnapshot() {
+        snapshotManager.abortSnapshot();
     }
 
     public String getThreadName() {
@@ -74,6 +79,7 @@ public class ControllerThread extends Thread {
                 break;
             case TRAFFIC_UPDATE:
             case ACCIDENT_ALERT:
+                EventQueue.info(name + " received " + msg.getType() + " from " + msg.getSenderId() + ": " + msg.getPayload());
                 snapshotManager.recordIncomingMessage(msg);
                 break;
             default:
