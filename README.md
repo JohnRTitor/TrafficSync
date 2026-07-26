@@ -47,8 +47,18 @@ cp node.env.example node1.env
 ```
 
 ### 1. Build the project
+**Linux/macOS:**
 ```bash
 ./scripts/build.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+# Create the output directory if it doesn't exist
+New-Item -ItemType Directory -Force -Path out | Out-Null
+
+# Compile all Java files under src
+javac -d out (Get-ChildItem -Recurse -Filter *.java src | ForEach-Object { $_.FullName })
 ```
 
 ### 2. Start the VPS Server
@@ -59,12 +69,23 @@ Open a new terminal and run:
 
 ### 3. Start the Nodes
 Open 5 new terminals, and in each run one of the following:
+
+**Linux/macOS:**
 ```bash
 ./scripts/run_node.sh node1.env
 ./scripts/run_node.sh node2.env
 ./scripts/run_node.sh node3.env
 ./scripts/run_node.sh node4.env
 ./scripts/run_node.sh node5.env
+```
+
+**Windows (PowerShell):**
+```powershell
+java -cp out trafficsync.cli.NodeApp node1.env
+java -cp out trafficsync.cli.NodeApp node2.env
+java -cp out trafficsync.cli.NodeApp node3.env
+java -cp out trafficsync.cli.NodeApp node4.env
+java -cp out trafficsync.cli.NodeApp node5.env
 ```
 
 ### 4. Interactive Terminal UI
