@@ -18,6 +18,15 @@ graph TD
 
 ## How to Build and Run
 
+### 0. Environment Setup
+Before running the project, you need to set up the environment configuration files. Copy the example files to create your local configurations:
+```bash
+cp server.env.example server.env
+cp node.env.example node1.env
+# You will need to create node2.env through node5.env similarly, 
+# ensuring that NODE_ID, REGION_ID, and NEIGHBORS are correctly set for each node.
+```
+
 ### 1. Build the project
 ```bash
 ./scripts/build.sh
