@@ -55,7 +55,7 @@ public class ControllerThread extends Thread {
                     handleMessage(msg);
                 } else {
                     // Periodic work (if we timed out)
-                    if (running && !outgoingNeighbors.isEmpty()) {
+                    if (running && node.isTrafficGenerationEnabled() && !outgoingNeighbors.isEmpty()) {
                         int cars = (int)(Math.random() * 50);
                         String target = outgoingNeighbors.get((int)(Math.random() * outgoingNeighbors.size()));
                         String payload = name + " processed " + cars + " cars.";
@@ -72,7 +72,7 @@ public class ControllerThread extends Thread {
     private void handleMessage(Message msg) {
         switch (msg.getType()) {
             case START_SNAPSHOT:
-                snapshotManager.initiateSnapshot();
+                snapshotManager.initiateSnapshot(msg.getSnapshotId());
                 break;
             case MARKER:
                 snapshotManager.handleMarker(msg);

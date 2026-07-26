@@ -35,6 +35,7 @@ public class ChandyLamportManager {
 
     // Local state variables (mocked)
     private String savedLocalState = "";
+    private volatile String currentSnapshotId = null;
 
     public ChandyLamportManager(String ownerId, List<String> outgoingNeighbors, List<String> incomingNeighbors,
             MessageSender sender, TerminalScreen screen) {
@@ -45,9 +46,9 @@ public class ChandyLamportManager {
         this.screen = screen;
     }
 
-    public void initiateSnapshot() {
+    public void initiateSnapshot(String snapshotId) {
         if (isRecording.compareAndSet(false, true)) {
-            String snapshotId = "SNAP-" + System.currentTimeMillis();
+            this.currentSnapshotId = snapshotId;
             EventQueue.snapshot("Initiating Snapshot: " + snapshotId);
 
             recordLocalState();
@@ -60,7 +61,7 @@ public class ChandyLamportManager {
             if (incomingNeighbors.isEmpty()) {
                 completeSnapshot();
             }
-
+        } else {
             EventQueue.warn("Snapshot already in progress.");
         }
     }
@@ -70,6 +71,7 @@ public class ChandyLamportManager {
         String snapshotId = markerMsg.getSnapshotId();
 
         if (isRecording.compareAndSet(false, true)) {
+            this.currentSnapshotId = snapshotId;
             // Rule 1: First time seeing marker
             EventQueue.snapshot("First MARKER received from " + senderId + ". Starting recording.");
             recordLocalState();
@@ -146,6 +148,6 @@ public class ChandyLamportManager {
         EventQueue.snapshot("Snapshot Complete: " + finalReport);
 
         // Report to Node
-        sender.sendMessage(MessageType.LOCAL_SNAPSHOT_DONE, "NODE", finalReport, null);
+        sender.sendMessage(MessageType.LOCAL_SNAPSHOT_DONE, "NODE", finalReport, currentSnapshotId);
     }
 }

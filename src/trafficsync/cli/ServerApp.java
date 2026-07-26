@@ -16,7 +16,7 @@ public class ServerApp {
         int tcpPort = config.getInt("SERVER_PORT", 9000);
         int httpPort = config.getInt("HTTP_PORT", 8080);
         
-        String menu = "[s] Snapshot All | [q] Quit Current Task | [t] Show Topology | [r] Refresh | [c] Clear Logs | [x] Exit";
+        String menu = "[s] Snapshot All | [m <node> <msg>] Send Msg | [b <msg>] Broadcast | [t] Topology | [r] Refresh | [c] Clear Logs | [x] Exit";
         TerminalScreen screen = new TerminalScreen("VPS Coordinator Server", menu);
         screen.setStatus("Server IP", "0.0.0.0");
         screen.setStatus("TCP Port", String.valueOf(tcpPort));
@@ -46,13 +46,7 @@ public class ServerApp {
                     renderer.stop();
                     System.exit(0);
                     break;
-                case "q":
-                    if (parts.length > 1) {
-                        screen.cancelTask(parts[1]);
-                    } else {
-                        screen.cancelLatestTask();
-                    }
-                    break;
+
                 case "c":
                     screen.clearLogs();
                     break;
@@ -61,8 +55,24 @@ public class ServerApp {
                         EventQueue.info(node + " -> " + neighbors);
                     });
                     break;
+
                 case "s":
                     server.triggerGlobalSnapshot();
+                    break;
+                case "m":
+                    if (parts.length >= 3) {
+                        server.sendMessageToNode(parts[1], parts[2]);
+                    } else {
+                        EventQueue.warn("Usage: m <nodeId> <message>");
+                    }
+                    break;
+                case "b":
+                    String bMsg = command.substring(1).trim();
+                    if (!bMsg.isEmpty()) {
+                        server.broadcastMessage(bMsg);
+                    } else {
+                        EventQueue.warn("Usage: b <message>");
+                    }
                     break;
                 case "r":
                     // Redraw triggers naturally

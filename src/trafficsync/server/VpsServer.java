@@ -163,6 +163,31 @@ public class VpsServer {
             EventQueue.warn("Failed to relay message to " + target + ": Node not found");
         }
     }
+
+    public void sendMessageToNode(String nodeId, String message) {
+        TCPConnection conn = registry.getConnection(nodeId);
+        if (conn != null) {
+            conn.send(new Message(MessageType.MANUAL_MESSAGE, "VPS", nodeId, null, message));
+            EventQueue.info("Sent message to " + nodeId + ": " + message);
+        } else {
+            EventQueue.warn("Node not found: " + nodeId);
+        }
+    }
+
+    public void broadcastMessage(String message) {
+        Set<String> nodes = registry.getNodes();
+        if (nodes.isEmpty()) {
+            EventQueue.warn("No nodes connected to broadcast to.");
+            return;
+        }
+        for (String nodeId : nodes) {
+            TCPConnection conn = registry.getConnection(nodeId);
+            if (conn != null) {
+                conn.send(new Message(MessageType.MANUAL_MESSAGE, "VPS", nodeId, null, message));
+            }
+        }
+        EventQueue.info("Broadcasted message: " + message);
+    }
     
     public void triggerGlobalSnapshot() {
         currentSnapshotId = "SNAP-" + System.currentTimeMillis();

@@ -34,6 +34,7 @@ public class TrafficNode {
     private final Queue<Message> pendingSnapshotTriggers = new LinkedList<>();
     private final Map<String, String> localSnapshotStates = new ConcurrentHashMap<>();
     
+    private volatile boolean trafficGenerationEnabled = false;
     private volatile boolean registered = false;
 
     public TrafficNode(String nodeId, String regionId, String serverHost, int serverPort, 
@@ -83,39 +84,13 @@ public class TrafficNode {
         handleSnapshotTrigger(new Message(MessageType.SNAPSHOT_TRIGGER, "LOCAL", nodeId, null, null, System.currentTimeMillis(), localSnapshotId));
     }
     
-    public void triggerTrafficUpdate() {
-        if (controllers.isEmpty()) return;
-        ControllerThread randomCt = controllers.get((int)(Math.random() * controllers.size()));
-        List<String> neighbors = threadTopology.get(randomCt.getThreadName());
-        
-        if (neighbors != null && !neighbors.isEmpty()) {
-            String target = neighbors.get((int)(Math.random() * neighbors.size()));
-            String payload = "Manual traffic update from Node CLI";
-            
-            String taskId = "TRAF-" + System.currentTimeMillis();
-            AtomicBoolean cancelled = new AtomicBoolean(false);
-            Runnable onCancel = () -> {
-                cancelled.set(true);
-            };
-            screen.addTask(new Task(taskId, "Traffic to " + target, 0.0, "Preparing...", onCancel));
-            
-            new Thread(() -> {
-                try {
-                    for (int i = 0; i <= 10; i++) {
-                        if (cancelled.get()) return;
-                        screen.updateTask(taskId, i / 10.0, "Sending in " + (3000 - i*300) + "ms");
-                        Thread.sleep(300);
-                    }
-                    if (!cancelled.get()) {
-                        routeThreadMessage(new Message(MessageType.TRAFFIC_UPDATE, randomCt.getThreadName(), target, null, payload));
-                        EventQueue.info("Triggered manual traffic update from " + randomCt.getThreadName() + " to " + target);
-                        screen.removeTask(taskId);
-                    }
-                } catch (Exception e) {}
-            }).start();
-        } else {
-            EventQueue.warn("No outgoing neighbors for " + randomCt.getThreadName() + " to send traffic to.");
-        }
+    public void toggleTrafficGeneration() {
+        trafficGenerationEnabled = !trafficGenerationEnabled;
+        EventQueue.info("Traffic generation is now " + (trafficGenerationEnabled ? "ON" : "OFF"));
+    }
+    
+    public boolean isTrafficGenerationEnabled() {
+        return trafficGenerationEnabled;
     }
 
     public void sendManualMessage(String target, String text) {
@@ -133,28 +108,9 @@ public class TrafficNode {
                 }
             }
         }
-        String taskId = "MSG-" + System.currentTimeMillis();
-        AtomicBoolean cancelled = new AtomicBoolean(false);
-        Runnable onCancel = () -> {
-            cancelled.set(true);
-        };
-        screen.addTask(new Task(taskId, "Msg to " + resolvedTarget, 0.0, "Preparing...", onCancel));
         
-        String finalTarget = resolvedTarget;
-        new Thread(() -> {
-            try {
-                for (int i = 0; i <= 10; i++) {
-                    if (cancelled.get()) return;
-                    screen.updateTask(taskId, i / 10.0, "Sending in " + (3000 - i*300) + "ms");
-                    Thread.sleep(300);
-                }
-                if (!cancelled.get()) {
-                    communicator.sendMessage(MessageType.MANUAL_MESSAGE, finalTarget, text);
-                    EventQueue.network("Sent MANUAL_MESSAGE to " + finalTarget);
-                    screen.removeTask(taskId);
-                }
-            } catch (Exception e) {}
-        }).start();
+        communicator.sendMessage(MessageType.MANUAL_MESSAGE, resolvedTarget, text);
+        EventQueue.network("Sent MANUAL_MESSAGE to " + resolvedTarget);
     }
 
     private void handleMessage(Message msg) {
