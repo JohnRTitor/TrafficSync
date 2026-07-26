@@ -2,16 +2,14 @@ package trafficsync.node;
 
 import trafficsync.common.Message;
 import trafficsync.common.MessageType;
-import trafficsync.snapshot.ChandyLamportManager;
 import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
 import trafficsync.transport.RegionCommunicator;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TrafficNode {
     private final String nodeId;
@@ -19,14 +17,16 @@ public class TrafficNode {
     private final String serverHost;
     private final int serverPort;
     private final int nodePort;
-    private final List<String> neighbors;
     private final List<String> peers = new ArrayList<>();
     private final int controllerCount;
     private final TerminalScreen screen;
 
     private RegionCommunicator communicator;
-    private ChandyLamportManager snapshotManager;
     private final List<ControllerThread> controllers = new ArrayList<>();
+    
+    private final Map<String, List<String>> threadTopology = new HashMap<>();
+    private final Map<String, List<String>> incomingThreadTopology = new HashMap<>();
+    private final Map<String, String> localSnapshotStates = new ConcurrentHashMap<>();
     
     private volatile boolean registered = false;
 
@@ -39,8 +39,6 @@ public class TrafficNode {
         this.nodePort = nodePort;
         this.controllerCount = controllerCount;
         this.screen = screen;
-        
-        this.neighbors = new ArrayList<>();
     }
 
     public void start() {
@@ -49,8 +47,6 @@ public class TrafficNode {
             communicator = new RegionCommunicator(nodeId, regionId, serverHost, serverPort, this::handleMessage, this::handleDisconnect);
             communicator.start();
             
-            snapshotManager = new ChandyLamportManager(neighbors, communicator, screen);
-
             // Register with VPS
             String payload = nodePort + "," + controllerCount + ",ACTIVE";
             communicator.sendMessage(MessageType.REGISTER, "VPS", payload);
@@ -73,18 +69,7 @@ public class TrafficNode {
     }
     
     public void triggerSnapshot() {
-        if (!registered) {
-            EventQueue.warn("Cannot trigger snapshot: Node not registered with VPS.");
-            return;
-        }
-        snapshotManager.initiateSnapshot();
-    }
-    
-    public void sendTrafficUpdate(String payload) {
-        if (!registered || neighbors.isEmpty()) return;
-        String target = neighbors.get((int) (Math.random() * neighbors.size()));
-        communicator.sendMessage(MessageType.TRAFFIC_UPDATE, target, payload);
-        EventQueue.network("Sent TRAFFIC to " + target);
+        EventQueue.warn("Snapshots must now be triggered from the VPS Server CLI.");
     }
 
     public void sendManualMessage(String target, String text) {
@@ -115,19 +100,14 @@ public class TrafficNode {
                 screen.setStatus("Connection", "CONNECTED");
                 startControllers();
                 break;
-            case TOPOLOGY:
-                updateTopology((String) msg.getPayload());
-                break;
             case PEER_LIST:
                 updatePeers((String) msg.getPayload());
                 break;
-            case TRAFFIC_UPDATE:
-            case ACCIDENT_ALERT:
-                EventQueue.network("Received " + msg.getType() + " from " + msg.getSenderId());
-                snapshotManager.recordIncomingMessage(msg);
+            case SNAPSHOT_TRIGGER:
+                handleSnapshotTrigger(msg);
                 break;
-            case MARKER:
-                snapshotManager.handleMarker(msg);
+            case TOPOLOGY:
+                // We no longer rely on external topology for Chandy-Lamport
                 break;
             case STATUS_RESPONSE:
                 EventQueue.info("Received PONG from VPS");
@@ -140,13 +120,72 @@ public class TrafficNode {
         }
     }
     
-    private void updateTopology(String payload) {
-        neighbors.clear();
-        if (payload != null && !payload.isEmpty()) {
-            neighbors.addAll(Arrays.asList(payload.split(",")));
+    private void handleSnapshotTrigger(Message msg) {
+        localSnapshotStates.clear();
+        EventQueue.snapshot("Received SNAPSHOT_TRIGGER from VPS.");
+        
+        List<String> validInitiators = new ArrayList<>();
+        for (String node : threadTopology.keySet()) {
+            if (canReachAll(node)) {
+                validInitiators.add(node);
+            }
         }
-        screen.setStatus("Neighbors", neighbors.isEmpty() ? "None" : String.join(",", neighbors));
-        EventQueue.info("Topology updated: " + neighbors);
+        
+        if (!validInitiators.isEmpty()) {
+            String initiator = validInitiators.get((int)(Math.random() * validInitiators.size()));
+            EventQueue.snapshot("Selected initiator " + initiator + " for local snapshot.");
+            routeThreadMessage(new Message(MessageType.START_SNAPSHOT, "NODE", initiator, regionId, null, System.currentTimeMillis(), msg.getSnapshotId()));
+        } else {
+            EventQueue.error("No valid initiator found in local topology!");
+        }
+    }
+
+    private boolean canReachAll(String startNode) {
+        Set<String> visited = new HashSet<>();
+        Queue<String> queue = new LinkedList<>();
+        queue.add(startNode);
+        visited.add(startNode);
+        
+        while (!queue.isEmpty()) {
+            String curr = queue.poll();
+            for (String neighbor : threadTopology.get(curr)) {
+                if (!visited.contains(neighbor)) {
+                    visited.add(neighbor);
+                    queue.add(neighbor);
+                }
+            }
+        }
+        return visited.size() == controllerCount;
+    }
+
+    public void routeThreadMessage(Message msg) {
+        if (msg.getType() == MessageType.LOCAL_SNAPSHOT_DONE) {
+            handleLocalSnapshotDone(msg);
+            return;
+        }
+
+        String target = msg.getReceiverId();
+        for (ControllerThread ct : controllers) {
+            if (ct.getThreadName().equals(target)) {
+                ct.enqueueMessage(msg);
+                break;
+            }
+        }
+    }
+    
+    private synchronized void handleLocalSnapshotDone(Message msg) {
+        localSnapshotStates.put(msg.getSenderId(), (String)msg.getPayload());
+        if (localSnapshotStates.size() == controllerCount) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Region-").append(regionId).append(" [");
+            for (Map.Entry<String, String> entry : localSnapshotStates.entrySet()) {
+                sb.append("{").append(entry.getKey()).append(": ").append(entry.getValue()).append("}");
+            }
+            sb.append("]");
+            
+            communicator.sendMessage(MessageType.SNAPSHOT_RESPONSE, "VPS", sb.toString());
+            EventQueue.snapshot("Sent combined regional snapshot to VPS");
+        }
     }
     
     private void updatePeers(String payload) {
@@ -163,7 +202,7 @@ public class TrafficNode {
     }
     
     public void printNeighbors() {
-        EventQueue.info("Logical Neighbors: " + String.join(", ", neighbors));
+        // Obsolete command now
     }
 
     private void handleDisconnect() {
@@ -175,12 +214,51 @@ public class TrafficNode {
         }
     }
 
-    private void startControllers() {
+    private void buildThreadTopology() {
         for (int i = 0; i < controllerCount; i++) {
-            ControllerThread ct = new ControllerThread("Controller-" + i, this);
+            String name = "Controller-" + i;
+            threadTopology.put(name, new ArrayList<>());
+            incomingThreadTopology.put(name, new ArrayList<>());
+        }
+
+        if (controllerCount == 0) return;
+
+        List<String> nodes = new ArrayList<>(threadTopology.keySet());
+        Collections.shuffle(nodes);
+        String root = nodes.get(0);
+        
+        List<String> connected = new ArrayList<>();
+        connected.add(root);
+        
+        // Build spanning tree
+        for (int i = 1; i < nodes.size(); i++) {
+            String target = nodes.get(i);
+            String source = connected.get((int) (Math.random() * connected.size()));
+            threadTopology.get(source).add(target);
+            incomingThreadTopology.get(target).add(source);
+            connected.add(target);
+        }
+        
+        // Add random edges
+        int extraEdges = controllerCount; 
+        for (int i = 0; i < extraEdges; i++) {
+            String from = nodes.get((int)(Math.random() * nodes.size()));
+            String to = nodes.get((int)(Math.random() * nodes.size()));
+            if (!from.equals(to) && !threadTopology.get(from).contains(to)) {
+                threadTopology.get(from).add(to);
+                incomingThreadTopology.get(to).add(from);
+            }
+        }
+    }
+
+    private void startControllers() {
+        buildThreadTopology();
+        for (int i = 0; i < controllerCount; i++) {
+            String name = "Controller-" + i;
+            ControllerThread ct = new ControllerThread(name, this, threadTopology.get(name), incomingThreadTopology.get(name), screen);
             controllers.add(ct);
             ct.start();
         }
-        EventQueue.info("Started " + controllerCount + " controller threads.");
+        EventQueue.info("Started " + controllerCount + " controller threads with local topology.");
     }
 }

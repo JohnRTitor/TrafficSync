@@ -163,9 +163,33 @@ public class VpsServer {
         }
     }
     
+    public void triggerGlobalSnapshot() {
+        String snapshotId = "SNAP-" + System.currentTimeMillis();
+        snapshotStates.clear();
+        EventQueue.snapshot("Triggering global snapshot: " + snapshotId);
+        screen.setTask("Snapshot", 0.0, "Waiting for node responses...");
+        
+        for (String nodeId : registry.getNodes()) {
+            TCPConnection conn = registry.getConnection(nodeId);
+            if (conn != null) {
+                conn.send(new Message(MessageType.SNAPSHOT_TRIGGER, "VPS", nodeId, null, snapshotId));
+            }
+        }
+    }
+
     private void handleSnapshotResponse(Message msg) {
         String state = (String) msg.getPayload();
         snapshotStates.put(msg.getSenderId(), state);
-        EventQueue.snapshot("Received snapshot state from " + msg.getSenderId());
+        EventQueue.snapshot("Received snapshot state from " + msg.getSenderId() + ": " + state);
+        
+        int totalNodes = registry.getNodes().size();
+        int received = snapshotStates.size();
+        
+        if (received >= totalNodes) {
+            screen.setTask("Snapshot", 1.0, "All nodes reported.");
+            EventQueue.snapshot("Global Snapshot Complete.");
+        } else {
+            screen.setTask("Snapshot", (double) received / totalNodes, "Waiting for node responses... " + received + "/" + totalNodes);
+        }
     }
 }

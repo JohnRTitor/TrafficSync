@@ -19,7 +19,7 @@ public class NodeApp {
         int controllers = config.getInt("CONTROLLER_COUNT", 1);
         int nodePort = config.getInt("NODE_PORT", 5000);
         
-        String menu = "[q] Quit Task | [s] Snapshot | [t] Send Traffic | [m <id> <msg>] Send Manual Msg | [p] List Sites | [n] Show Neighbors | [c] Clear Logs | [x] Exit";
+        String menu = "[q] Quit Task | [s] Snapshot | [m <id> <msg>] Send Manual Msg | [p] List Sites | [n] Show Neighbors | [c] Clear Logs | [x] Exit";
         TerminalScreen screen = new TerminalScreen("Smart Traffic Node: " + nodeId, menu);
         screen.setStatus("Server", serverHost + ":" + serverPort);
         screen.setStatus("Region", regionId);
@@ -49,7 +49,7 @@ public class NodeApp {
                     node.triggerSnapshot();
                     break;
                 case "t":
-                    node.sendTrafficUpdate("Manual traffic update from " + nodeId);
+                    EventQueue.warn("Traffic updates are now strictly internal between threads.");
                     break;
                 case "m":
                     if (parts.length >= 3) {

@@ -16,7 +16,7 @@ public class ServerApp {
         int tcpPort = config.getInt("SERVER_PORT", 9000);
         int httpPort = config.getInt("HTTP_PORT", 8080);
         
-        String menu = "[q] Quit Current Task | [t] Show Topology | [r] Refresh | [c] Clear Logs | [x] Exit";
+        String menu = "[s] Snapshot | [q] Quit Current Task | [t] Show Topology | [r] Refresh | [c] Clear Logs | [x] Exit";
         TerminalScreen screen = new TerminalScreen("VPS Coordinator Server", menu);
         screen.setStatus("Server IP", "0.0.0.0");
         screen.setStatus("TCP Port", String.valueOf(tcpPort));
@@ -50,6 +50,9 @@ public class ServerApp {
                     server.getRegistry().getTopology().forEach((node, neighbors) -> {
                         EventQueue.info(node + " -> " + neighbors);
                     });
+                    break;
+                case "s":
+                    server.triggerGlobalSnapshot();
                     break;
                 case "r":
                     // Redraw triggers naturally

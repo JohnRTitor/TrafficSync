@@ -4,7 +4,6 @@ import trafficsync.common.Message;
 import trafficsync.common.MessageType;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
-import trafficsync.transport.RegionCommunicator;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,9 +11,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ChandyLamportManager {
+    public interface MessageSender {
+        void sendMessage(MessageType type, String target, String payload, String snapshotId);
+    }
+
+    private final String ownerId;
     private final List<String> outgoingNeighbors; // Channels we send markers TO
     private final List<String> incomingNeighbors; // Logical incoming channels we expect markers FROM
-    private final RegionCommunicator communicator;
+    private final MessageSender sender;
     private final TerminalScreen screen;
 
     // We assume bidirectional links for this simulation if not strictly specified otherwise
@@ -31,10 +35,11 @@ public class ChandyLamportManager {
     // Local state variables (mocked)
     private String savedLocalState = "";
 
-    public ChandyLamportManager(List<String> neighbors, RegionCommunicator communicator, TerminalScreen screen) {
-        this.outgoingNeighbors = neighbors;
-        this.incomingNeighbors = neighbors; // For simplicity, symmetric graph
-        this.communicator = communicator;
+    public ChandyLamportManager(String ownerId, List<String> outgoingNeighbors, List<String> incomingNeighbors, MessageSender sender, TerminalScreen screen) {
+        this.ownerId = ownerId;
+        this.outgoingNeighbors = outgoingNeighbors;
+        this.incomingNeighbors = incomingNeighbors;
+        this.sender = sender;
         this.screen = screen;
     }
 
@@ -48,7 +53,7 @@ public class ChandyLamportManager {
             
             // Send MARKER on all outgoing channels
             for (String neighbor : outgoingNeighbors) {
-                communicator.sendMessage(MessageType.MARKER, neighbor, null, snapshotId);
+                sender.sendMessage(MessageType.MARKER, neighbor, null, snapshotId);
             }
             
             if (incomingNeighbors.isEmpty()) {
@@ -77,7 +82,7 @@ public class ChandyLamportManager {
             
             // Propagate markers
             for (String neighbor : outgoingNeighbors) {
-                communicator.sendMessage(MessageType.MARKER, neighbor, null, snapshotId);
+                sender.sendMessage(MessageType.MARKER, neighbor, null, snapshotId);
             }
             
         } else {
@@ -100,7 +105,7 @@ public class ChandyLamportManager {
     }
 
     private void recordLocalState() {
-        savedLocalState = "NodeState{time=" + System.currentTimeMillis() + "}";
+        savedLocalState = ownerId + "State{time=" + System.currentTimeMillis() + "}";
         channelStates.clear();
         emptyChannels.clear();
         closedChannels.clear();
@@ -133,8 +138,8 @@ public class ChandyLamportManager {
         String finalReport = report.toString();
         EventQueue.snapshot("Snapshot Complete: " + finalReport);
         
-        // Report to VPS
-        communicator.sendMessage(MessageType.SNAPSHOT_RESPONSE, "VPS", finalReport);
+        // Report to Node
+        sender.sendMessage(MessageType.LOCAL_SNAPSHOT_DONE, "NODE", finalReport, null);
         
         // Reset task after a delay (could be done in a separate thread, but this is fine for UI)
         new Thread(() -> {
