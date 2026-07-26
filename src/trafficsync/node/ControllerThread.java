@@ -1,6 +1,5 @@
 package trafficsync.node;
 
-import trafficsync.terminal.EventQueue;
 
 public class ControllerThread extends Thread {
     private final String name;

@@ -19,7 +19,7 @@ public class NodeApp {
         int controllers = config.getInt("CONTROLLER_COUNT", 1);
         int nodePort = config.getInt("NODE_PORT", 5000);
         
-        String menu = "[q] Quit Task | [s] Snapshot | [t] Send Traffic | [p] List Sites | [n] Show Neighbors | [c] Clear Logs | [x] Exit";
+        String menu = "[q] Quit Task | [s] Snapshot | [t] Send Traffic | [m <id> <msg>] Send Manual Msg | [p] List Sites | [n] Show Neighbors | [c] Clear Logs | [x] Exit";
         TerminalScreen screen = new TerminalScreen("Smart Traffic Node: " + nodeId, menu);
         screen.setStatus("Server", serverHost + ":" + serverPort);
         screen.setStatus("Region", regionId);
@@ -37,7 +37,9 @@ public class NodeApp {
         
         KeyboardInput input = new KeyboardInput(screen, command -> {
             screen.setPromptInput(command);
-            switch (command.toLowerCase()) {
+            String[] parts = command.split(" ", 3);
+            String cmd = parts[0].toLowerCase();
+            switch (cmd) {
                 case "x":
                     node.stop();
                     renderer.stop();
@@ -48,6 +50,13 @@ public class NodeApp {
                     break;
                 case "t":
                     node.sendTrafficUpdate("Manual traffic update from " + nodeId);
+                    break;
+                case "m":
+                    if (parts.length >= 3) {
+                        node.sendManualMessage(parts[1], parts[2]);
+                    } else {
+                        EventQueue.warn("Usage: m <nodeId> <message>");
+                    }
                     break;
                 case "p":
                     node.printPeers();

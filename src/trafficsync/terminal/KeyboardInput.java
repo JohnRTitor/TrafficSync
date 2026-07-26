@@ -15,13 +15,14 @@ public class KeyboardInput {
 
     public void start() {
         Thread inputThread = new Thread(() -> {
-            Scanner scanner = new Scanner(System.in);
-            while (running) {
-                if (scanner.hasNextLine()) {
-                    String line = scanner.nextLine().trim();
-                    if (!line.isEmpty()) {
-                        screen.setPromptInput(""); // clear prompt immediately
-                        onCommand.accept(line);
+            try (Scanner scanner = new Scanner(System.in)) {
+                while (running) {
+                    if (scanner.hasNextLine()) {
+                        String line = scanner.nextLine().trim();
+                        if (!line.isEmpty()) {
+                            screen.setPromptInput(""); // clear prompt immediately
+                            onCommand.accept(line);
+                        }
                     }
                 }
             }

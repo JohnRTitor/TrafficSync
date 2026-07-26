@@ -2,7 +2,6 @@ package trafficsync.server;
 
 import trafficsync.common.Message;
 import trafficsync.common.MessageType;
-import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
 import trafficsync.transport.TCPConnection;
@@ -10,8 +9,6 @@ import trafficsync.transport.TCPServer;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -95,6 +92,7 @@ public class VpsServer {
             case TRAFFIC_UPDATE:
             case ACCIDENT_ALERT:
             case MARKER:
+            case MANUAL_MESSAGE:
                 relayMessage(msg);
                 break;
             case SNAPSHOT_RESPONSE:

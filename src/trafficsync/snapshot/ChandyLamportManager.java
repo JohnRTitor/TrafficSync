@@ -4,7 +4,7 @@ import trafficsync.common.Message;
 import trafficsync.common.MessageType;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
-import trafficsync.transport.TCPConnection;
+import trafficsync.transport.RegionCommunicator;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,10 +12,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ChandyLamportManager {
-    private final String nodeId;
     private final List<String> outgoingNeighbors; // Channels we send markers TO
     private final List<String> incomingNeighbors; // Logical incoming channels we expect markers FROM
-    private final TCPConnection vpsConnection;
+    private final RegionCommunicator communicator;
     private final TerminalScreen screen;
 
     // We assume bidirectional links for this simulation if not strictly specified otherwise
@@ -32,11 +31,10 @@ public class ChandyLamportManager {
     // Local state variables (mocked)
     private String savedLocalState = "";
 
-    public ChandyLamportManager(String nodeId, List<String> neighbors, TCPConnection vpsConnection, TerminalScreen screen) {
-        this.nodeId = nodeId;
+    public ChandyLamportManager(List<String> neighbors, RegionCommunicator communicator, TerminalScreen screen) {
         this.outgoingNeighbors = neighbors;
         this.incomingNeighbors = neighbors; // For simplicity, symmetric graph
-        this.vpsConnection = vpsConnection;
+        this.communicator = communicator;
         this.screen = screen;
     }
 
@@ -50,8 +48,7 @@ public class ChandyLamportManager {
             
             // Send MARKER on all outgoing channels
             for (String neighbor : outgoingNeighbors) {
-                Message marker = new Message(MessageType.MARKER, nodeId, neighbor, null, null, System.currentTimeMillis(), snapshotId);
-                vpsConnection.send(marker);
+                communicator.sendMessage(MessageType.MARKER, neighbor, null, snapshotId);
             }
             
             if (incomingNeighbors.isEmpty()) {
@@ -80,8 +77,7 @@ public class ChandyLamportManager {
             
             // Propagate markers
             for (String neighbor : outgoingNeighbors) {
-                Message m = new Message(MessageType.MARKER, nodeId, neighbor, null, null, System.currentTimeMillis(), snapshotId);
-                vpsConnection.send(m);
+                communicator.sendMessage(MessageType.MARKER, neighbor, null, snapshotId);
             }
             
         } else {
@@ -138,8 +134,7 @@ public class ChandyLamportManager {
         EventQueue.snapshot("Snapshot Complete: " + finalReport);
         
         // Report to VPS
-        Message response = new Message(MessageType.SNAPSHOT_RESPONSE, nodeId, "VPS", null, finalReport);
-        vpsConnection.send(response);
+        communicator.sendMessage(MessageType.SNAPSHOT_RESPONSE, "VPS", finalReport);
         
         // Reset task after a delay (could be done in a separate thread, but this is fine for UI)
         new Thread(() -> {

@@ -13,5 +13,6 @@ public enum MessageType {
     PING,
     STATUS_REQUEST,
     STATUS_RESPONSE,
-    PEER_LIST
+    PEER_LIST,
+    MANUAL_MESSAGE
 }

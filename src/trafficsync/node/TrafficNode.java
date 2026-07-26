@@ -6,10 +6,9 @@ import trafficsync.snapshot.ChandyLamportManager;
 import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
-import trafficsync.transport.TCPConnection;
+import trafficsync.transport.RegionCommunicator;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,7 +24,7 @@ public class TrafficNode {
     private final int controllerCount;
     private final TerminalScreen screen;
 
-    private TCPConnection vpsConnection;
+    private RegionCommunicator communicator;
     private ChandyLamportManager snapshotManager;
     private final List<ControllerThread> controllers = new ArrayList<>();
     
@@ -46,16 +45,14 @@ public class TrafficNode {
 
     public void start() {
         try {
-            Socket socket = new Socket(serverHost, serverPort);
-            vpsConnection = new TCPConnection(socket, this::handleMessage, this::handleDisconnect);
-            vpsConnection.start();
+            communicator = new RegionCommunicator(nodeId, regionId, serverHost, serverPort, this::handleMessage, this::handleDisconnect);
+            communicator.start();
             
-            snapshotManager = new ChandyLamportManager(nodeId, neighbors, vpsConnection, screen);
+            snapshotManager = new ChandyLamportManager(neighbors, communicator, screen);
 
             // Register with VPS
             String payload = nodePort + "," + controllerCount + ",ACTIVE";
-            Message regMsg = new Message(MessageType.REGISTER, nodeId, "VPS", regionId, payload);
-            vpsConnection.send(regMsg);
+            communicator.sendMessage(MessageType.REGISTER, "VPS", payload);
             
             EventQueue.info("Connected to VPS. Sent REGISTER.");
             
@@ -68,8 +65,8 @@ public class TrafficNode {
         for (ControllerThread ct : controllers) {
             ct.stopRunning();
         }
-        if (vpsConnection != null) {
-            vpsConnection.close();
+        if (communicator != null) {
+            communicator.stop();
         }
         EventQueue.info("Node stopped.");
     }
@@ -85,9 +82,17 @@ public class TrafficNode {
     public void sendTrafficUpdate(String payload) {
         if (!registered || neighbors.isEmpty()) return;
         String target = neighbors.get((int) (Math.random() * neighbors.size()));
-        Message msg = new Message(MessageType.TRAFFIC_UPDATE, nodeId, target, regionId, payload);
-        vpsConnection.send(msg);
+        communicator.sendMessage(MessageType.TRAFFIC_UPDATE, target, payload);
         EventQueue.network("Sent TRAFFIC to " + target);
+    }
+
+    public void sendManualMessage(String target, String text) {
+        if (!registered) {
+            EventQueue.warn("Cannot send manual message: Node not registered with VPS.");
+            return;
+        }
+        communicator.sendMessage(MessageType.MANUAL_MESSAGE, target, text);
+        EventQueue.network("Sent MANUAL_MESSAGE to " + target);
     }
 
     private void handleMessage(Message msg) {
@@ -114,6 +119,9 @@ public class TrafficNode {
                 break;
             case STATUS_RESPONSE:
                 EventQueue.info("Received PONG from VPS");
+                break;
+            case MANUAL_MESSAGE:
+                EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
                 break;
             default:
                 EventQueue.warn("Unhandled message type: " + msg.getType());
@@ -146,7 +154,7 @@ public class TrafficNode {
         EventQueue.info("Logical Neighbors: " + String.join(", ", neighbors));
     }
 
-    private void handleDisconnect(TCPConnection connection) {
+    private void handleDisconnect() {
         registered = false;
         screen.setStatus("Connection", "DISCONNECTED");
         EventQueue.error("Lost connection to VPS.");
