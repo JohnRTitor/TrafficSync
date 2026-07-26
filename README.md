@@ -66,6 +66,11 @@ Open a new terminal and run:
 ```bash
 ./scripts/run_server.sh
 ```
+OR 
+```bash
+java -cp out trafficsync.cli.ServerApp server.env
+
+```
 
 ### 3. Start the Nodes
 Open 5 new terminals, and in each run one of the following:

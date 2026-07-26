@@ -1,23 +1,19 @@
 # Person 1 - VPS bootstrap + registry
-# Plain HTTP server for /register, /peers
 src/trafficsync/server/NodeRegistry.java @Kirtika04
 src/trafficsync/server/HttpInspector.java @Kirtika04
 src/trafficsync/cli/ServerApp.java @Kirtika04
 
 # Person 2 - Site communication layer
-# ServerSocket, connection handling, Message passing
 src/trafficsync/transport/ @Rishika-06-2004
 src/trafficsync/common/ @Rishika-06-2004
 
 # Person 3 - Local state + snapshot logic
-# DiffusingEngine, SnapshotEngine, TrafficSimulator
 src/trafficsync/node/ @suchi974
 src/trafficsync/snapshot/ @suchi974
 src/trafficsync/cli/NodeApp.java @suchi974
 src/trafficsync/terminal/ @suchi974
 
 # Person 4 - Aggregation + integration
-# SnapshotCollector, coordinator logic, integration testing
 src/trafficsync/server/VpsServer.java @JohnRTitor
 src/trafficsync/config/ @JohnRTitor
 *.env.example @JohnRTitor
