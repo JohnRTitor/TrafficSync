@@ -1,0 +1,16 @@
+package trafficsync.common;
+
+public enum MessageType {
+    REGISTER,
+    REGISTER_ACK,
+    TOPOLOGY,
+    TRAFFIC_UPDATE,
+    ACCIDENT_ALERT,
+    SIGNAL_CHANGE,
+    MARKER,
+    SNAPSHOT_REQUEST,
+    SNAPSHOT_RESPONSE,
+    PING,
+    STATUS_REQUEST,
+    STATUS_RESPONSE
+}

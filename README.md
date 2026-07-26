@@ -1,89 +1,62 @@
-# TrafficSync: Distributed Snapshot System
+# Smart Traffic Management Network
 
-TrafficSync is a distributed Java application that simulates network traffic among independent nodes and implements the **Chandy-Lamport Distributed Snapshot Algorithm** over real network sockets. The project is designed with a decentralized architecture where nodes communicate asynchronously, and a central bootstrap registry server helps nodes discover their peers.
+## Architecture
 
-## Project Architecture
+This project implements a distributed traffic controller simulation with **Chandy-Lamport** snapshot capabilities. It uses standard Java sockets and multithreading.
 
-The codebase is divided into several modules (packages) with a clear separation of concerns.
+**Topology:** The physical transport follows a **Star Topology** with the VPS Server at the center. Nodes establish a single TCP connection to the VPS. The VPS relays messages between nodes according to the logical graph defined in each node's `.env` configuration.
 
-### 1. `registry` (Bootstrap/VPS Server)
-- **Role:** Acts as the network's central directory service.
-- **Functionality:** 
-  - Loads the network topology from a `topology.txt` file.
-  - Exposes an HTTP server (default port `8080`) with endpoints for nodes to `/register`, `/leave`, and `/ping`.
-  - Distributes the peer map (neighbors) to nodes via the `/peers` endpoint, along with incoming edge definitions.
-- **Key Classes:** `RegistryServer`, `RegistryManager`, `Topology`.
-
-### 2. `communication` (Site Socket Layer)
-- **Role:** Handles physical transmission of messages over TCP sockets.
-- **Functionality:**
-  - Implements the `Communication` interface that abstract algorithms depend on.
-  - Dynamically resolves neighbor IP addresses and ports using the `RegistryClient`.
-  - Spawns a background `Server` thread to accept incoming connections and pushes parsed payloads to the `MessageHandler`.
-- **Key Classes:** `SocketCommunication`, `Server`, `Client`, `RegistryClient`.
-
-### 3. `node` and `handler` (Local Orchestration)
-- **Role:** Glues together the network and algorithm engines for a single machine.
-- **Functionality:**
-  - `Node` acts as the primary facade, initializing connections and registering with the central server.
-  - `MessageHandler` acts as a router, examining the `MessageType` of incoming network payloads and forwarding them to the appropriate algorithm engine (e.g., passing a `MARKER` message to the `SnapshotEngine`).
-- **Key Classes:** `Node`, `MessageHandler`.
-
-### 4. `snapshot` (Chandy-Lamport Global Snapshot)
-- **Role:** Records a consistent global state of the distributed system.
-- **Functionality:**
-  - When triggered, it records the node's local state and sends `MARKER` messages to all outgoing channels.
-  - Listens for incoming `MARKER` messages from neighbors to begin recording incoming channel states.
-  - Combines the local state and the state of the channels into a final `SnapshotReport`.
-- **Key Classes:** `SnapshotEngine`, `LocalState`, `ChannelState`.
-
-### 5. `diffusing` (Termination Detection)
-- **Role:** Implements Dijkstra-Scholten's diffusing computation algorithm.
-- **Functionality:** 
-  - Uses `EXPLORE` and `ECHO` messages to build a spanning tree and determine when a distributed computation has fully completed across all nodes.
-- **Key Classes:** `DiffusingEngine`.
-
-### 6. `traffic` (Traffic Simulation)
-- **Role:** Simulates the background noise/workload of the network.
-- **Functionality:**
-  - Spawns a thread that randomly generates and sends `TRAFFIC` (Application) messages to neighboring nodes to simulate a busy network while the snapshot is running.
-- **Key Classes:** `TrafficSimulator`.
-
----
-
-## How to Run the Project
-
-### Prerequisites
-- JDK 11 or higher installed on your system.
-
-### 1. Compile the Project
-Open a terminal in the root directory and compile the source code:
-```bash
-mkdir -p out
-javac -d out $(find src -name "*.java")
+## Logical Topology Diagram
+```mermaid
+graph TD
+    NODE-1((NODE-1<br>NORTH)) <--> NODE-2((NODE-2<br>EAST))
+    NODE-1 <--> NODE-3((NODE-3<br>WEST))
+    NODE-2 <--> NODE-4((NODE-4<br>SOUTH))
+    NODE-3 <--> NODE-5((NODE-5<br>CENTRAL))
+    NODE-4 <--> NODE-5
 ```
 
-### 2. Start the Registry Server
-The registry server is required to distribute the network topology before any nodes can communicate. Ensure there is a valid `topology.txt` file in your working directory.
+## How to Build and Run
+
+### 1. Build the project
 ```bash
-java -cp out registry.RegistryServer 8080
+./scripts/build.sh
+```
+
+### 2. Start the VPS Server
+Open a new terminal and run:
+```bash
+./scripts/run_server.sh
 ```
 
 ### 3. Start the Nodes
-Open a new terminal window for each node you want to run (e.g., if your topology expects 3 nodes).
+Open 5 new terminals, and in each run one of the following:
 ```bash
-java -cp out app.NodeRunner
+./scripts/run_node.sh node1.env
+./scripts/run_node.sh node2.env
+./scripts/run_node.sh node3.env
+./scripts/run_node.sh node4.env
+./scripts/run_node.sh node5.env
 ```
-The interactive CLI will ask for a listening port (e.g., `5001`, `5002`, `5003`).
 
-### 4. Running Algorithms
-Once multiple nodes are running and registered, you can use the interactive `NodeRunner` CLI on any node to:
-- **1. Start Traffic Simulator:** Generate randomized application messages across the network.
-- **2. Stop Traffic Simulator:** Halt the background traffic thread.
-- **3. Start Diffusing Computation:** Begin the Dijkstra-Scholten termination detection algorithm.
-- **4. Start Snapshot:** Trigger the Chandy-Lamport algorithm to record the global state.
-- **5. Print Local State:** View the locally recorded snapshot variables and channel buffers for that specific node.
-- **6. Exit:** Cleanly unregister from the Registry Server and shut down the node.
-- **7. Send Manual Message:** Manually input a destination Node ID and a custom text payload to send an `APPLICATION` message.
-- **8. Refresh Peers:** Query the Registry Server to refresh dynamic connections, particularly useful if neighbors boot up after you.
-- **9. Ping Server:** Send a health-check ping to the Registry Server.
+### 4. Interactive Terminal UI
+Each instance opens an interactive dashboard rendered with ANSI sequences. 
+- Press `s + Enter` in a node terminal to initiate a Chandy-Lamport snapshot.
+- Press `t + Enter` to manually fire a traffic message.
+- Press `q + Enter` to quit the active task (e.g., snapshot waiting phase).
+- Press `x + Enter` to gracefully exit the application.
+
+### 5. VPS Server Inspector (curl)
+Open a new terminal and inspect the global state via HTTP:
+```bash
+curl http://localhost:8080/ping
+curl http://localhost:8080/nodes
+curl http://localhost:8080/topology
+curl http://localhost:8080/snapshot/status
+```
+
+## Demonstration Checklist
+1. **Node Registration**: Start the VPS, then Node-1. Note the registration message in the VPS UI and the CONNECTED status in the Node UI.
+2. **Message Exchange**: The local controller threads in nodes will automatically simulate traffic events every 5-15s. They send events through the VPS to a random neighbor.
+3. **Chandy-Lamport**: In Node-1, type `s` and hit Enter. Node-1 records state and floods MARKER messages. Other nodes receive markers, record their states, and eventually send a SNAPSHOT_RESPONSE to the VPS. 
+4. **Global Verification**: Run `curl http://localhost:8080/snapshot/status` to view the aggregated snapshot state from the server.
