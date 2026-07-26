@@ -92,8 +92,19 @@ public class TrafficNode {
             EventQueue.warn("Cannot send manual message: Node not registered with VPS.");
             return;
         }
-        communicator.sendMessage(MessageType.MANUAL_MESSAGE, target, text);
-        EventQueue.network("Sent MANUAL_MESSAGE to " + target);
+        
+        String resolvedTarget = target;
+        if (!peers.contains(target)) {
+            for (String peer : peers) {
+                if (peer.equals("NODE-" + target) || peer.endsWith("-" + target)) {
+                    resolvedTarget = peer;
+                    break;
+                }
+            }
+        }
+        
+        communicator.sendMessage(MessageType.MANUAL_MESSAGE, resolvedTarget, text);
+        EventQueue.network("Sent MANUAL_MESSAGE to " + resolvedTarget);
     }
 
     private void handleMessage(Message msg) {
