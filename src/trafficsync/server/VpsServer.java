@@ -136,16 +136,16 @@ public class VpsServer {
     private void broadcastTopologyAndPeers() {
         registry.buildGlobalTopology();
         Set<String> allNodes = registry.getNodes();
-        String peersPayload = String.join(",", allNodes);
         
         for (String nodeId : allNodes) {
             TCPConnection conn = registry.getConnection(nodeId);
             if (conn != null) {
                 // Send PEER_LIST
+                Set<String> neighbors = registry.getTopology().get(nodeId);
+                String peersPayload = neighbors != null ? String.join(",", neighbors) : "";
                 conn.send(new Message(MessageType.PEER_LIST, "VPS", nodeId, null, peersPayload));
                 
                 // Send TOPOLOGY
-                Set<String> neighbors = registry.getTopology().get(nodeId);
                 String topoPayload = neighbors != null ? String.join(",", neighbors) : "";
                 conn.send(new Message(MessageType.TOPOLOGY, "VPS", nodeId, null, topoPayload));
             }
