@@ -4,17 +4,23 @@
 
 This project implements a distributed traffic controller simulation with **Chandy-Lamport** snapshot capabilities. It uses standard Java sockets and multithreading.
 
-**Topology:** The physical transport follows a **Star Topology** with the VPS Server at the center. Nodes establish a single TCP connection to the VPS. The VPS relays messages between nodes according to the logical graph defined in each node's `.env` configuration.
+**Terminology & Topology:** 
+- **Site (Node / Region)**: An entire geographic region registers as a single node, which we call a **Site**.
+- **Outposts**: Inside each Site, multiple traffic outposts (controllers) are simulated using Java threads.
+- **Physical Transport**: Follows a **Star Topology** with the VPS Server at the center. Sites establish a single TCP connection to the VPS. 
+- **Logical Directed Graph**: The VPS dynamically builds a logical directed graph across all connected Sites and relays messages (traffic updates and Chandy-Lamport markers) transparently between them.
 
 ## Logical Topology Diagram
 ```mermaid
 graph TD
-    NODE-1((NODE-1<br>NORTH)) <--> NODE-2((NODE-2<br>EAST))
-    NODE-1 <--> NODE-3((NODE-3<br>WEST))
-    NODE-2 <--> NODE-4((NODE-4<br>SOUTH))
-    NODE-3 <--> NODE-5((NODE-5<br>CENTRAL))
-    NODE-4 <--> NODE-5
+    VPS((VPS Server))
+    NODE-1((Site 1<br>NORTH)) --- VPS
+    NODE-2((Site 2<br>EAST)) --- VPS
+    NODE-3((Site 3<br>WEST)) --- VPS
+    NODE-4((Site 4<br>SOUTH)) --- VPS
+    NODE-5((Site 5<br>CENTRAL)) --- VPS
 ```
+*(The VPS dynamically assigns logical neighbors and routes Chandy-Lamport markers across this star topology.)*
 
 ## How to Build and Run
 
