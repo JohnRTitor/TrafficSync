@@ -45,6 +45,7 @@ public class TrafficNode {
 
     public void start() {
         try {
+            EventQueue.info("Connecting to VPS at " + serverHost + ":" + serverPort + "...");
             communicator = new RegionCommunicator(nodeId, regionId, serverHost, serverPort, this::handleMessage, this::handleDisconnect);
             communicator.start();
             

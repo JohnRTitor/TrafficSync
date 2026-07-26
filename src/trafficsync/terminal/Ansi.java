@@ -5,12 +5,16 @@ public class Ansi {
     
     // Clear ops
     public static final String CLEAR_SCREEN = ESC + "2J";
-    public static final String CLEAR_LINE = ESC + "2K";
+    public static final String CLEAR_LINE = ESC + "K";
     
     // Cursor ops
     public static final String CURSOR_HOME = ESC + "H";
     public static final String HIDE_CURSOR = ESC + "?25l";
     public static final String SHOW_CURSOR = ESC + "?25h";
+    
+    // Alt screen
+    public static final String ALT_SCREEN_ON = ESC + "?1049h";
+    public static final String ALT_SCREEN_OFF = ESC + "?1049l";
     
     public static String cursorTo(int row, int col) {
         return ESC + row + ";" + col + "H";

@@ -11,6 +11,7 @@ public class TerminalRenderer {
 
     public void start() {
         running = true;
+        System.out.print(Ansi.ALT_SCREEN_ON);
         System.out.print(Ansi.CLEAR_SCREEN);
         System.out.print(Ansi.HIDE_CURSOR);
         
@@ -44,6 +45,7 @@ public class TerminalRenderer {
             renderThread.interrupt();
         }
         System.out.print(Ansi.SHOW_CURSOR);
+        System.out.print(Ansi.ALT_SCREEN_OFF);
         System.out.println("\nExiting...");
     }
 }

@@ -56,6 +56,7 @@ public class VpsServer {
 
     private void handleNewConnection(Socket socket) {
         try {
+            EventQueue.info("New connection from " + socket.getRemoteSocketAddress());
             TCPConnection[] connRef = new TCPConnection[1];
             connRef[0] = new TCPConnection(
                 socket,
