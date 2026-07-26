@@ -1,14 +1,27 @@
 # Smart Traffic Management Network
 
+## Problem Statement
+
+A city operates several smart traffic controllers deployed at different road junctions. These controllers continuously exchange traffic information such as congestion levels, signal timings, and accident alerts. The communication network may consist of multiple disconnected regions of the city, meaning that some controllers may not be able to communicate with controllers in another region.
+
+Before a city-wide status report can be generated, each communication region must determine whether it contains a controller that can directly or indirectly reach every other controller within that region. If multiple such controllers exist in the same region, any one of them may be selected randomly. The selected controller should coordinate the collection of a consistent global state of its region while normal traffic updates continue to be exchanged.
+
+The implementation should use a directed communication graph with at least five participating sites.
+
+
 ## Architecture
 
 This project implements a distributed traffic controller simulation with **Chandy-Lamport** snapshot capabilities. It uses standard Java sockets and multithreading.
 
-**Terminology & Topology:** 
-- **Site (Node / Region)**: An entire geographic region registers as a single node, which we call a **Site**.
-- **Outposts**: Inside each Site, multiple traffic outposts (controllers) are simulated using Java threads.
-- **Physical Transport**: Follows a **Star Topology** with the VPS Server at the center. Sites establish a single TCP connection to the VPS. 
-- **Logical Directed Graph**: The VPS dynamically builds a logical directed graph across all connected Sites and relays messages (traffic updates and Chandy-Lamport markers) transparently between them.
+**Detailed Architecture Model:** 
+1. **Server (Global Coordinator)**: A central VPS/Server that provides a CLI. It allows us to view the global state of all regions and can trigger a global snapshot by sending a message to all connected Sites.
+2. **Sites / Regions (Clients)**: We have `m` Sites. Each Site acts as a client connected to the Server and represents an entire geographic region.
+3. **Traffic Outposts (Threads)**: Inside each Site, we spawn `n` traffic outpost controllers as separate threads. These threads form a directed communication graph *within* that Site and continuously exchange traffic updates with each other.
+4. **Snapshot Execution (Chandy-Lamport / Diffusion)**: 
+   - When the Server triggers a snapshot, it sends a command to the Sites.
+   - Within each Site, we first evaluate the directed graph of the `n` threads to find a valid "initiator" (a thread that can directly or indirectly reach all other threads in the region). 
+   - We randomly select one of these valid initiators to coordinate the Chandy-Lamport snapshot across the threads in that Site.
+5. **Reporting**: Once a Site's threads finish the Chandy-Lamport snapshot, the Site aggregates this local state and sends it back to the Server, which then displays the state of all `m` regions in its CLI.
 
 ## Logical Topology Diagram
 ```mermaid
