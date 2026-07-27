@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class VpsServer {
@@ -85,7 +86,7 @@ public class VpsServer {
         if (toRemove != null) {
             registry.removeNode(toRemove);
             EventQueue.warn("Node disconnected: " + toRemove);
-            broadcastTopologyAndPeers();
+            broadcastPeers();
             updateScreenStatus();
         }
     }
@@ -96,16 +97,12 @@ public class VpsServer {
                 handleRegister(msg, connection);
                 break;
             case TRAFFIC_UPDATE:
-            case ACCIDENT_ALERT:
             case MARKER:
             case MANUAL_MESSAGE:
                 relayMessage(msg);
                 break;
             case SNAPSHOT_RESPONSE:
                 handleSnapshotResponse(msg);
-                break;
-            case PING:
-                connection.send(new Message(MessageType.STATUS_RESPONSE, "VPS", msg.getSenderId(), null, "PONG"));
                 break;
             default:
                 EventQueue.warn("Unknown message type: " + msg.getType());
@@ -116,43 +113,25 @@ public class VpsServer {
         String nodeId = msg.getSenderId();
         String regionId = msg.getRegionId();
         
-        String payloadStr = (String) msg.getPayload();
-        int nodePort = 0;
-        int controllerCount = 0;
-        String status = "UNKNOWN";
-        
-        if (payloadStr != null && !payloadStr.isEmpty()) {
-            String[] parts = payloadStr.split(",");
-            if (parts.length >= 1) nodePort = Integer.parseInt(parts[0]);
-            if (parts.length >= 2) controllerCount = Integer.parseInt(parts[1]);
-            if (parts.length >= 3) status = parts[2];
-        }
-        
-        registry.registerNode(nodeId, regionId, nodePort, controllerCount, status, connection);
-        connection.setConnectionId(nodeId);
+        registry.registerNode(nodeId, regionId, connection);
         EventQueue.network("REGISTER successful: " + nodeId + " (Region: " + regionId + ")");
         
         connection.send(new Message(MessageType.REGISTER_ACK, "VPS", nodeId, regionId, "OK"));
         
-        broadcastTopologyAndPeers();
+        broadcastPeers();
         updateScreenStatus();
     }
     
-    private void broadcastTopologyAndPeers() {
-        registry.buildGlobalTopology();
+    private void broadcastPeers() {
         Set<String> allNodes = registry.getNodes();
         
         for (String nodeId : allNodes) {
             TCPConnection conn = registry.getConnection(nodeId);
             if (conn != null) {
-                // Send PEER_LIST
-                Set<String> neighbors = registry.getTopology().get(nodeId);
-                String peersPayload = neighbors != null ? String.join(",", neighbors) : "";
+                Set<String> neighbors = new HashSet<>(allNodes);
+                neighbors.remove(nodeId);
+                String peersPayload = neighbors.isEmpty() ? "" : String.join(",", neighbors);
                 conn.send(new Message(MessageType.PEER_LIST, "VPS", nodeId, null, peersPayload));
-                
-                // Send TOPOLOGY
-                String topoPayload = neighbors != null ? String.join(",", neighbors) : "";
-                conn.send(new Message(MessageType.TOPOLOGY, "VPS", nodeId, null, topoPayload));
             }
         }
     }

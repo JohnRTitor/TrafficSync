@@ -80,8 +80,7 @@ public class HttpInspector {
                 return "{\"status\": \"ok\"}";
             case "/nodes":
                 return "{\"nodes\": " + toJsonArray(registry.getNodes()) + "}";
-            case "/topology":
-                return "{\"topology\": " + registry.getTopology().toString().replace("=", ":") + "}";
+
             case "/regions":
                 return "{\"regions\": " + registry.getNodeRegions().toString().replace("=", ":") + "}";
             case "/snapshot/status":

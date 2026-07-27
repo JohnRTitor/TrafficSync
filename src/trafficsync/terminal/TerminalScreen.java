@@ -58,37 +58,7 @@ public class TerminalScreen {
         activeTasks.remove(id);
     }
 
-    public synchronized void cancelLatestTask() {
-        if (!activeTasks.isEmpty()) {
-            // Get the last added task
-            String lastId = null;
-            for (String id : activeTasks.keySet()) {
-                lastId = id;
-            }
-            if (lastId != null) {
-                cancelTask(lastId);
-            }
-        } else {
-            EventQueue.warn("No active tasks to cancel.");
-        }
-    }
 
-    public synchronized void cancelTask(String id) {
-        Task t = activeTasks.remove(id);
-        if (t != null) {
-            if (t.onCancel != null) {
-                t.onCancel.run();
-            }
-            EventQueue.info("Cancelled task: " + t.title);
-        } else {
-            EventQueue.warn("Task not found: " + id);
-        }
-    }
-
-    @Deprecated
-    public void setTask(String task, double progress, String status) {
-        // Keeping for backward compatibility temporarily if needed, but doing nothing.
-    }
     
     public void setPromptInput(String input) {
         this.promptInput = input;

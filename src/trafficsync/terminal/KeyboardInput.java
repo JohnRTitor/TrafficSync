@@ -30,8 +30,4 @@ public class KeyboardInput {
         inputThread.setDaemon(true);
         inputThread.start();
     }
-    
-    public void stop() {
-        running = false;
-    }
 }

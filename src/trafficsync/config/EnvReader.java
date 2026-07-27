@@ -43,8 +43,4 @@ public class EnvReader {
             return defaultValue;
         }
     }
-    
-    public Map<String, String> getAll() {
-        return new HashMap<>(envVars);
-    }
 }

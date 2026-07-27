@@ -6,7 +6,6 @@ import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
 import trafficsync.terminal.TerminalScreen.Task;
-import java.util.concurrent.atomic.AtomicBoolean;
 import trafficsync.transport.RegionCommunicator;
 
 import java.io.IOException;
@@ -18,7 +17,6 @@ public class TrafficNode {
     private final String regionId;
     private final String serverHost;
     private final int serverPort;
-    private final int nodePort;
     private final List<String> peers = new ArrayList<>();
     private final int controllerCount;
     private final TerminalScreen screen;
@@ -38,12 +36,11 @@ public class TrafficNode {
     private volatile boolean registered = false;
 
     public TrafficNode(String nodeId, String regionId, String serverHost, int serverPort, 
-                       int nodePort, int controllerCount, TerminalScreen screen) {
+                       int controllerCount, TerminalScreen screen) {
         this.nodeId = nodeId;
         this.regionId = regionId;
         this.serverHost = serverHost;
         this.serverPort = serverPort;
-        this.nodePort = nodePort;
         this.controllerCount = controllerCount;
         this.screen = screen;
     }
@@ -55,7 +52,7 @@ public class TrafficNode {
             communicator.start();
             
             // Register with VPS
-            String payload = nodePort + "," + controllerCount + ",ACTIVE";
+            String payload = controllerCount + ",ACTIVE";
             communicator.sendMessage(MessageType.REGISTER, "VPS", payload);
             
             EventQueue.info("Connected to VPS. Sent REGISTER.");
@@ -145,9 +142,7 @@ public class TrafficNode {
             case SNAPSHOT_TRIGGER:
                 handleSnapshotTrigger(msg);
                 break;
-            case TOPOLOGY:
-                // We no longer rely on external topology for Chandy-Lamport
-                break;
+
             case STATUS_RESPONSE:
                 EventQueue.info("Received PONG from VPS");
                 break;

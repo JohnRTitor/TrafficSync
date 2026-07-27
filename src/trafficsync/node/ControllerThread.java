@@ -28,7 +28,7 @@ public class ControllerThread extends Thread {
             node.routeThreadMessage(new Message(type, name, target, null, payload, System.currentTimeMillis(), snapshotId));
         };
         
-        this.snapshotManager = new ChandyLamportManager(name, outgoingNeighbors, incomingNeighbors, sender, screen);
+        this.snapshotManager = new ChandyLamportManager(name, outgoingNeighbors, incomingNeighbors, sender);
     }
 
     public void enqueueMessage(Message msg) {
@@ -78,7 +78,6 @@ public class ControllerThread extends Thread {
                 snapshotManager.handleMarker(msg);
                 break;
             case TRAFFIC_UPDATE:
-            case ACCIDENT_ALERT:
                 EventQueue.info(name + " received " + msg.getType() + " from " + msg.getSenderId() + ": " + msg.getPayload());
                 snapshotManager.recordIncomingMessage(msg);
                 break;

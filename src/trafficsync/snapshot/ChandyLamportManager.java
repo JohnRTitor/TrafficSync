@@ -3,12 +3,10 @@ package trafficsync.snapshot;
 import trafficsync.common.Message;
 import trafficsync.common.MessageType;
 import trafficsync.terminal.EventQueue;
-import trafficsync.terminal.TerminalScreen;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ChandyLamportManager {
     public interface MessageSender {
@@ -19,14 +17,12 @@ public class ChandyLamportManager {
     private final List<String> outgoingNeighbors; // Channels we send markers TO
     private final List<String> incomingNeighbors; // Logical incoming channels we expect markers FROM
     private final MessageSender sender;
-    private final TerminalScreen screen;
 
     // We assume bidirectional links for this simulation if not strictly specified
     // otherwise
     // So incomingNeighbors = outgoingNeighbors
 
     private final AtomicBoolean isRecording = new AtomicBoolean(false);
-    private final AtomicInteger markersReceivedCount = new AtomicInteger(0);
 
     // Channel state: senderId -> List of messages
     private final Map<String, List<Message>> channelStates = new ConcurrentHashMap<>();
@@ -38,12 +34,11 @@ public class ChandyLamportManager {
     private volatile String currentSnapshotId = null;
 
     public ChandyLamportManager(String ownerId, List<String> outgoingNeighbors, List<String> incomingNeighbors,
-            MessageSender sender, TerminalScreen screen) {
+            MessageSender sender) {
         this.ownerId = ownerId;
         this.outgoingNeighbors = outgoingNeighbors;
         this.incomingNeighbors = incomingNeighbors;
         this.sender = sender;
-        this.screen = screen;
     }
 
     public void initiateSnapshot(String snapshotId) {
@@ -106,11 +101,10 @@ public class ChandyLamportManager {
     }
 
     private void recordLocalState() {
-        savedLocalState = ownerId + "State{time=" + System.currentTimeMillis() + "}";
+        savedLocalState = String.format("STATE[%s, ts=%d]", ownerId, System.currentTimeMillis());
         channelStates.clear();
         emptyChannels.clear();
         closedChannels.clear();
-        markersReceivedCount.set(0);
     }
 
     private void checkCompletion() {
@@ -126,7 +120,7 @@ public class ChandyLamportManager {
             channelStates.clear();
             emptyChannels.clear();
             closedChannels.clear();
-            markersReceivedCount.set(0);
+            savedLocalState = "";
         }
     }
 

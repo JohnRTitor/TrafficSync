@@ -17,21 +17,19 @@ public class NodeApp {
         String serverHost = config.get("SERVER_HOST", "127.0.0.1");
         int serverPort = config.getInt("SERVER_PORT", 9000);
         int controllers = config.getInt("CONTROLLER_COUNT", 1);
-        int nodePort = config.getInt("NODE_PORT", 5000);
         
         String menu = "[s] Local Snapshot | [t] Toggle Traffic | [m <id> <msg>] Send Manual Msg | [p] List Sites | [c] Clear Logs | [r] Reconnect | [x] Exit";
         TerminalScreen screen = new TerminalScreen("Smart Traffic Node: " + nodeId, menu);
         screen.setStatus("Server", serverHost + ":" + serverPort);
         screen.setStatus("Region", regionId);
         screen.setStatus("Controllers", String.valueOf(controllers));
-        screen.setStatus("Node Port", String.valueOf(nodePort));
         screen.setStatus("Peers", "0");
         screen.setStatus("Connection", "DISCONNECTED");
         
         TerminalRenderer renderer = new TerminalRenderer(screen);
         renderer.start();
         
-        TrafficNode node = new TrafficNode(nodeId, regionId, serverHost, serverPort, nodePort, controllers, screen);
+        TrafficNode node = new TrafficNode(nodeId, regionId, serverHost, serverPort, controllers, screen);
         node.start();
         
         KeyboardInput input = new KeyboardInput(screen, command -> {

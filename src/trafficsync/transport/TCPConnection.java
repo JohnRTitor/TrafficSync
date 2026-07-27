@@ -16,8 +16,6 @@ public class TCPConnection {
     private final Consumer<TCPConnection> onDisconnected;
     private Thread listenerThread;
     private volatile boolean running = true;
-    private String connectionId = "Unknown"; // For identification
-
     public TCPConnection(Socket socket, Consumer<Message> onMessageReceived, Consumer<TCPConnection> onDisconnected) throws IOException {
         this.socket = socket;
         this.onMessageReceived = onMessageReceived;
@@ -26,18 +24,7 @@ public class TCPConnection {
         // Output stream must be initialized first in Java Object Serialization to send header
         this.out = new ObjectOutputStream(socket.getOutputStream());
         this.in = new ObjectInputStream(socket.getInputStream());
-        
-        this.connectionId = socket.getRemoteSocketAddress().toString();
     }
-    
-    public void setConnectionId(String id) {
-        this.connectionId = id;
-    }
-    
-    public String getConnectionId() {
-        return this.connectionId;
-    }
-
     public void start() {
         listenerThread = new Thread(this::listen);
         listenerThread.setDaemon(true);
