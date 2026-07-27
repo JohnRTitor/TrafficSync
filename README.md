@@ -35,6 +35,19 @@ graph TD
 ```
 *(The VPS dynamically assigns logical neighbors and routes Chandy-Lamport markers across this star topology.)*
 
+## Configuration
+
+The project is configured via `.env` files. The following environment variables are supported:
+
+### Server Variables (`server.env`)
+- `SERVER_PORT`: The TCP port the VPS listens on. (Optional, Default: `9000`)
+
+### Node Variables (`node.env`)
+- `NODE_NAME`: The logical name of the region/site. (Optional, Default: `NODE-A`)
+- `SERVER_HOST`: The IP address of the VPS server. (Optional, Default: `127.0.0.1`)
+- `SERVER_PORT`: The TCP port of the VPS server. (Optional, Default: `9000`)
+- `CONTROLLER_COUNT`: The number of traffic outpost threads to spawn internally. (Optional, Default: `1`)
+
 ## How to Build and Run
 
 ### 0. Environment Setup
@@ -95,11 +108,24 @@ java -cp out trafficsync.cli.NodeApp node5.env
 
 ### 4. Interactive Terminal UI
 Each instance opens an interactive dashboard rendered with ANSI sequences. 
-- Press `s + Enter` in a node terminal to initiate a Chandy-Lamport snapshot.
-- Press `t + Enter` to manually fire a traffic message.
-- Press `m <id/name> <msg> + Enter` to manually send a message to another node.
-- Press `i <name> + Enter` to query a node's ID, or `i self` for self ID.
-- Press `x + Enter` to gracefully exit the application.
+
+#### Server (VPS) Commands:
+- `s + Enter`: Trigger a global snapshot across all connected sites.
+- `m <nodeId> <msg> + Enter`: Manually send a message to a specific node.
+- `b <msg> + Enter`: Broadcast a message to all connected nodes.
+- `r + Enter`: Refresh the screen.
+- `c + Enter`: Clear the event logs.
+- `x + Enter`: Gracefully exit the server.
+
+#### Node Commands:
+- `s + Enter`: Initiate a Chandy-Lamport snapshot locally.
+- `t + Enter`: Toggle automatic traffic event generation.
+- `m <nodeId/nodeName/server/vps> <msg> + Enter`: Manually send a message to another node or the server.
+- `i <name> + Enter`: Query a node's ID, or `i self` for self ID.
+- `p + Enter`: Print the list of all known peer sites.
+- `c + Enter`: Clear the event logs.
+- `r + Enter`: Reconnect to the VPS Server.
+- `x + Enter`: Gracefully exit the application.
 
 
 ## Demonstration Checklist

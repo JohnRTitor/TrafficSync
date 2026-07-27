@@ -165,9 +165,6 @@ public class TrafficNode {
                 handleSnapshotTrigger(msg);
                 break;
 
-            case STATUS_RESPONSE:
-                EventQueue.info("Received PONG from VPS");
-                break;
             case QUERY_NODE_ID_RESPONSE:
                 EventQueue.info("Query Result: " + msg.getPayload());
                 break;

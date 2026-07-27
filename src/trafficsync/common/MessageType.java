@@ -6,7 +6,6 @@ public enum MessageType {
     TRAFFIC_UPDATE,
     MARKER,
     SNAPSHOT_RESPONSE,
-    STATUS_RESPONSE,
     PEER_LIST,
     MANUAL_MESSAGE,
     SNAPSHOT_TRIGGER,
