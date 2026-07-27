@@ -52,7 +52,7 @@ public class NodeApp {
                     if (parts.length >= 3) {
                         node.sendManualMessage(parts[1], parts[2]);
                     } else {
-                        EventQueue.warn("Usage: m <nodeId/nodeName> <message>");
+                        EventQueue.warn("Usage: m <nodeId/nodeName/server/vps> <message>");
                     }
                     break;
                 case "i":
