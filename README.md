@@ -14,24 +14,24 @@ The implementation should use a directed communication graph with at least five 
 This project implements a distributed traffic controller simulation with **Chandy-Lamport** snapshot capabilities. It uses standard Java sockets and multithreading.
 
 **Detailed Architecture Model:** 
-1. **Server (Global Coordinator)**: A central VPS/Server that provides a CLI. It allows us to view the global state of all regions and can trigger a global snapshot by sending a message to all connected Sites.
-2. **Sites / Regions (Clients)**: We have `m` Sites. Each Site acts as a client connected to the Server and represents an entire geographic region.
+1. **Server (Global Coordinator)**: A central VPS/Server that provides a CLI. It allows us to view the global state of all nodes and can trigger a global snapshot by sending a message to all connected Sites.
+2. **Sites / Nodes (Clients)**: We have `m` Sites. Each Site acts as a client connected to the Server and represents an entire geographic node.
 3. **Traffic Outposts (Threads)**: Inside each Site, we spawn `n` traffic outpost controllers as separate threads. These threads form a directed communication graph *within* that Site and continuously exchange traffic updates with each other.
 4. **Snapshot Execution (Chandy-Lamport / Diffusion)**: 
    - When the Server triggers a snapshot, it sends a command to the Sites.
    - Within each Site, we first evaluate the directed graph of the `n` threads to find a valid "initiator" (a thread that can directly or indirectly reach all other threads in the region). 
    - We randomly select one of these valid initiators to coordinate the Chandy-Lamport snapshot across the threads in that Site.
-5. **Reporting**: Once a Site's threads finish the Chandy-Lamport snapshot, the Site aggregates this local state and sends it back to the Server, which then displays the state of all `m` regions in its CLI.
+5. **Reporting**: Once a Site's threads finish the Chandy-Lamport snapshot, the Site aggregates this local state and sends it back to the Server, which then displays the state of all `m` sites in its CLI.
 
 ## Logical Topology Diagram
 ```mermaid
 graph TD
     VPS((VPS Server))
-    NODE-1((Site 1<br>NORTH)) --- VPS
-    NODE-2((Site 2<br>EAST)) --- VPS
-    NODE-3((Site 3<br>WEST)) --- VPS
-    NODE-4((Site 4<br>SOUTH)) --- VPS
-    NODE-5((Site 5<br>CENTRAL)) --- VPS
+    NODE-1((Site 1<br>NODE-A)) --- VPS
+    NODE-2((Site 2<br>NODE-B)) --- VPS
+    NODE-3((Site 3<br>NODE-C)) --- VPS
+    NODE-4((Site 4<br>NODE-D)) --- VPS
+    NODE-5((Site 5<br>NODE-E)) --- VPS
 ```
 *(The VPS dynamically assigns logical neighbors and routes Chandy-Lamport markers across this star topology.)*
 
@@ -43,7 +43,7 @@ Before running the project, you need to set up the environment configuration fil
 cp server.env.example server.env
 cp node.env.example node1.env
 # You will need to create node2.env through node5.env similarly, 
-# ensuring that NODE_ID, REGION_ID, and NEIGHBORS are correctly set for each node.
+# ensuring that NODE_NAME and CONTROLLER_COUNT are correctly set for each node.
 ```
 
 ### 1. Build the project
@@ -97,7 +97,8 @@ java -cp out trafficsync.cli.NodeApp node5.env
 Each instance opens an interactive dashboard rendered with ANSI sequences. 
 - Press `s + Enter` in a node terminal to initiate a Chandy-Lamport snapshot.
 - Press `t + Enter` to manually fire a traffic message.
-- Press `q + Enter` to quit the active task (e.g., snapshot waiting phase).
+- Press `m <id/name> <msg> + Enter` to manually send a message to another node.
+- Press `i <name> + Enter` to query a node's ID, or `i self` for self ID.
 - Press `x + Enter` to gracefully exit the application.
 
 ### 5. VPS Server Inspector (curl)
@@ -105,7 +106,7 @@ Open a new terminal and inspect the global state via HTTP:
 ```bash
 curl http://localhost:8080/ping
 curl http://localhost:8080/nodes
-curl http://localhost:8080/topology
+curl http://localhost:8080/names
 curl http://localhost:8080/snapshot/status
 ```
 

@@ -81,8 +81,8 @@ public class HttpInspector {
             case "/nodes":
                 return "{\"nodes\": " + toJsonArray(registry.getNodes()) + "}";
 
-            case "/regions":
-                return "{\"regions\": " + registry.getNodeRegions().toString().replace("=", ":") + "}";
+            case "/names":
+                return "{\"names\": " + registry.getNodeNames().toString().replace("=", ":") + "}";
             case "/snapshot/status":
                 return "{\"snapshots\": " + vpsServer.getSnapshotStates().toString().replace("=", ":") + "}";
             default:

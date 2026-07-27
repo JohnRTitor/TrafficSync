@@ -7,9 +7,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.function.Consumer;
 
-public class RegionCommunicator {
-    private final String nodeId;
-    private final String regionId;
+public class NodeCommunicator {
+    private String nodeId;
     private final String serverHost;
     private final int serverPort;
     private final Consumer<Message> onMessageReceived;
@@ -17,14 +16,17 @@ public class RegionCommunicator {
     
     private TCPConnection connection;
 
-    public RegionCommunicator(String nodeId, String regionId, String serverHost, int serverPort, 
+    public NodeCommunicator(String nodeId, String serverHost, int serverPort, 
                               Consumer<Message> onMessageReceived, Runnable onDisconnect) {
         this.nodeId = nodeId;
-        this.regionId = regionId;
         this.serverHost = serverHost;
         this.serverPort = serverPort;
         this.onMessageReceived = onMessageReceived;
         this.onDisconnect = onDisconnect;
+    }
+    
+    public void setNodeId(String nodeId) {
+        this.nodeId = nodeId;
     }
 
     public void start() throws IOException {
@@ -50,12 +52,12 @@ public class RegionCommunicator {
     }
 
     public void sendMessage(MessageType type, String receiverId, Object payload) {
-        Message msg = new Message(type, nodeId, receiverId, regionId, payload);
+        Message msg = new Message(type, nodeId, receiverId, payload);
         sendMessage(msg);
     }
 
     public void sendMessage(MessageType type, String receiverId, Object payload, String snapshotId) {
-        Message msg = new Message(type, nodeId, receiverId, regionId, payload, System.currentTimeMillis(), snapshotId);
+        Message msg = new Message(type, nodeId, receiverId, payload, System.currentTimeMillis(), snapshotId);
         sendMessage(msg);
     }
 }

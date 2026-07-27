@@ -111,22 +111,42 @@ public class VpsServer {
             case SNAPSHOT_RESPONSE:
                 handleSnapshotResponse(msg);
                 break;
+            case QUERY_NODE_ID:
+                handleQueryNodeId(msg, connection);
+                break;
             default:
                 EventQueue.warn("Unknown message type: " + msg.getType());
         }
     }
 
     private void handleRegister(Message msg, TCPConnection connection) {
-        String nodeId = msg.getSenderId();
-        String regionId = msg.getRegionId();
+        String payloadStr = (String) msg.getPayload();
+        String[] parts = payloadStr.split(",");
+        String nodeName = parts[0];
         
-        registry.registerNode(nodeId, regionId, connection);
-        EventQueue.network("REGISTER successful: " + nodeId + " (Region: " + regionId + ")");
+        String assignedNodeId = registry.generateNodeId();
         
-        connection.send(new Message(MessageType.REGISTER_ACK, "VPS", nodeId, regionId, "OK"));
+        registry.registerNode(assignedNodeId, nodeName, connection);
+        EventQueue.network("REGISTER successful: " + assignedNodeId + " (Name: " + nodeName + ")");
+        
+        connection.send(new Message(MessageType.REGISTER_ACK, "VPS", assignedNodeId, assignedNodeId));
         
         broadcastPeers();
         updateScreenStatus();
+    }
+    
+    private void handleQueryNodeId(Message msg, TCPConnection connection) {
+        String targetName = (String) msg.getPayload();
+        String resolvedNodeId = registry.resolveNodeId(targetName);
+        
+        String responsePayload;
+        if (resolvedNodeId != null) {
+            responsePayload = targetName + " has Node ID: " + resolvedNodeId;
+        } else {
+            responsePayload = "Node not found: " + targetName;
+        }
+        
+        connection.send(new Message(MessageType.QUERY_NODE_ID_RESPONSE, "VPS", msg.getSenderId(), responsePayload));
     }
     
     private void broadcastPeers() {
@@ -137,30 +157,40 @@ public class VpsServer {
             if (conn != null) {
                 Set<String> neighbors = new HashSet<>(allNodes);
                 neighbors.remove(nodeId);
-                String peersPayload = neighbors.isEmpty() ? "" : String.join(",", neighbors);
-                conn.send(new Message(MessageType.PEER_LIST, "VPS", nodeId, null, peersPayload));
+                java.util.List<String> peerInfo = new java.util.ArrayList<>();
+                for (String neighbor : neighbors) {
+                    peerInfo.add(neighbor + "(" + registry.getNodeName(neighbor) + ")");
+                }
+                String peersPayload = String.join(",", peerInfo);
+                conn.send(new Message(MessageType.PEER_LIST, "VPS", nodeId, peersPayload));
             }
         }
     }
     
     private void relayMessage(Message msg) {
         String target = msg.getReceiverId();
-        TCPConnection conn = registry.getConnection(target);
-        if (conn != null) {
-            conn.send(msg);
-            EventQueue.network("Relayed " + msg.getType() + " from " + msg.getSenderId() + " to " + target);
+        String resolvedNodeId = registry.resolveNodeId(target);
+        if (resolvedNodeId != null) {
+            TCPConnection conn = registry.getConnection(resolvedNodeId);
+            if (conn != null) {
+                conn.send(msg);
+                EventQueue.network("Relayed " + msg.getType() + " from " + msg.getSenderId() + " to " + resolvedNodeId);
+            }
         } else {
             EventQueue.warn("Failed to relay message to " + target + ": Node not found");
         }
     }
 
-    public void sendMessageToNode(String nodeId, String message) {
-        TCPConnection conn = registry.getConnection(nodeId);
-        if (conn != null) {
-            conn.send(new Message(MessageType.MANUAL_MESSAGE, "VPS", nodeId, null, message));
-            EventQueue.info("Sent message to " + nodeId + ": " + message);
+    public void sendMessageToNode(String target, String message) {
+        String resolvedNodeId = registry.resolveNodeId(target);
+        if (resolvedNodeId != null) {
+            TCPConnection conn = registry.getConnection(resolvedNodeId);
+            if (conn != null) {
+                conn.send(new Message(MessageType.MANUAL_MESSAGE, "VPS", resolvedNodeId, message));
+                EventQueue.info("Sent message to " + resolvedNodeId + ": " + message);
+            }
         } else {
-            EventQueue.warn("Node not found: " + nodeId);
+            EventQueue.warn("Node not found: " + target);
         }
     }
 
@@ -173,7 +203,7 @@ public class VpsServer {
         for (String nodeId : nodes) {
             TCPConnection conn = registry.getConnection(nodeId);
             if (conn != null) {
-                conn.send(new Message(MessageType.MANUAL_MESSAGE, "VPS", nodeId, null, message));
+                conn.send(new Message(MessageType.MANUAL_MESSAGE, "VPS", nodeId, message));
             }
         }
         EventQueue.info("Broadcasted message: " + message);
@@ -195,7 +225,7 @@ public class VpsServer {
         for (String nodeId : registry.getNodes()) {
             TCPConnection conn = registry.getConnection(nodeId);
             if (conn != null) {
-                conn.send(new Message(MessageType.SNAPSHOT_TRIGGER, "VPS", nodeId, null, null, System.currentTimeMillis(), snapId));
+                conn.send(new Message(MessageType.SNAPSHOT_TRIGGER, "VPS", nodeId, null, System.currentTimeMillis(), snapId));
             }
         }
     }

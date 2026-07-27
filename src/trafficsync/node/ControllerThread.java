@@ -25,7 +25,7 @@ public class ControllerThread extends Thread {
         setDaemon(true);
         
         ChandyLamportManager.MessageSender sender = (type, target, payload, snapshotId) -> {
-            node.routeThreadMessage(new Message(type, name, target, null, payload, System.currentTimeMillis(), snapshotId));
+            node.routeThreadMessage(new Message(type, name, target, payload, System.currentTimeMillis(), snapshotId));
         };
         
         this.snapshotManager = new ChandyLamportManager(name, outgoingNeighbors, incomingNeighbors, sender);
@@ -59,7 +59,7 @@ public class ControllerThread extends Thread {
                         int cars = (int)(Math.random() * 50);
                         String target = outgoingNeighbors.get((int)(Math.random() * outgoingNeighbors.size()));
                         String payload = name + " processed " + cars + " cars.";
-                        node.routeThreadMessage(new Message(MessageType.TRAFFIC_UPDATE, name, target, null, payload));
+                        node.routeThreadMessage(new Message(MessageType.TRAFFIC_UPDATE, name, target, payload));
                     }
                 }
             } catch (InterruptedException e) {

@@ -6,22 +6,22 @@ import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
 import trafficsync.terminal.TerminalScreen.Task;
-import trafficsync.transport.RegionCommunicator;
+import trafficsync.transport.NodeCommunicator;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TrafficNode {
-    private final String nodeId;
-    private final String regionId;
+    private String nodeId;
+    private final String nodeName;
     private final String serverHost;
     private final int serverPort;
     private final List<String> peers = new ArrayList<>();
     private final int controllerCount;
     private final TerminalScreen screen;
 
-    private RegionCommunicator communicator;
+    private NodeCommunicator communicator;
     private final List<ControllerThread> controllers = new ArrayList<>();
     
     private final Map<String, List<String>> threadTopology = new HashMap<>();
@@ -35,10 +35,10 @@ public class TrafficNode {
     private volatile boolean trafficGenerationEnabled = false;
     private volatile boolean registered = false;
 
-    public TrafficNode(String nodeId, String regionId, String serverHost, int serverPort, 
+    public TrafficNode(String nodeName, String serverHost, int serverPort, 
                        int controllerCount, TerminalScreen screen) {
-        this.nodeId = nodeId;
-        this.regionId = regionId;
+        this.nodeName = nodeName;
+        this.nodeId = nodeName; // Temporary until registered
         this.serverHost = serverHost;
         this.serverPort = serverPort;
         this.controllerCount = controllerCount;
@@ -48,11 +48,11 @@ public class TrafficNode {
     public void start() {
         try {
             EventQueue.info("Connecting to VPS at " + serverHost + ":" + serverPort + "...");
-            communicator = new RegionCommunicator(nodeId, regionId, serverHost, serverPort, this::handleMessage, this::handleDisconnect);
+            communicator = new NodeCommunicator(nodeId, serverHost, serverPort, this::handleMessage, this::handleDisconnect);
             communicator.start();
             
             // Register with VPS
-            String payload = controllerCount + ",ACTIVE";
+            String payload = nodeName + "," + controllerCount + ",ACTIVE";
             communicator.sendMessage(MessageType.REGISTER, "VPS", payload);
             
             EventQueue.info("Connected to VPS. Sent REGISTER.");
@@ -96,7 +96,7 @@ public class TrafficNode {
             return;
         }
         String localSnapshotId = "LOCAL-" + System.currentTimeMillis();
-        handleSnapshotTrigger(new Message(MessageType.SNAPSHOT_TRIGGER, "LOCAL", nodeId, null, null, System.currentTimeMillis(), localSnapshotId));
+        handleSnapshotTrigger(new Message(MessageType.SNAPSHOT_TRIGGER, "LOCAL", nodeId, null, System.currentTimeMillis(), localSnapshotId));
     }
     
     public void toggleTrafficGeneration() {
@@ -130,12 +130,32 @@ public class TrafficNode {
         EventQueue.network("Sent MANUAL_MESSAGE to " + resolvedTarget);
     }
 
+    public void queryNodeId(String targetName) {
+        if (!registered) {
+            EventQueue.warn("Cannot query: Node not registered with VPS.");
+            return;
+        }
+        communicator.sendMessage(MessageType.QUERY_NODE_ID, "VPS", targetName);
+        EventQueue.network("Sent QUERY_NODE_ID for " + targetName);
+    }
+    
+    public void querySelfNodeId() {
+        if (!registered) {
+            EventQueue.warn("Node not registered with VPS.");
+        } else {
+            EventQueue.info("Self Node ID: " + this.nodeId);
+        }
+    }
+
     private void handleMessage(Message msg) {
         switch (msg.getType()) {
             case REGISTER_ACK:
+                this.nodeId = (String) msg.getPayload();
+                communicator.setNodeId(this.nodeId);
                 registered = true;
-                EventQueue.network("Registration Confirmed.");
+                EventQueue.network("Registration Confirmed. Assigned ID: " + this.nodeId);
                 screen.setStatus("Connection", "CONNECTED");
+                screen.setStatus("Node ID", this.nodeId);
                 startControllers();
                 break;
             case PEER_LIST:
@@ -147,6 +167,9 @@ public class TrafficNode {
 
             case STATUS_RESPONSE:
                 EventQueue.info("Received PONG from VPS");
+                break;
+            case QUERY_NODE_ID_RESPONSE:
+                EventQueue.info("Query Result: " + msg.getPayload());
                 break;
             case MANUAL_MESSAGE:
                 EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
@@ -197,7 +220,7 @@ public class TrafficNode {
         if (!validInitiators.isEmpty()) {
             String initiator = validInitiators.get((int)(Math.random() * validInitiators.size()));
             EventQueue.snapshot("Selected initiator " + initiator + " for local snapshot.");
-            routeThreadMessage(new Message(MessageType.START_SNAPSHOT, "NODE", initiator, regionId, null, System.currentTimeMillis(), currentSnapshotId));
+            routeThreadMessage(new Message(MessageType.START_SNAPSHOT, "NODE", initiator, null, System.currentTimeMillis(), currentSnapshotId));
         } else {
             EventQueue.error("No valid initiator found in local topology!");
             // Free the lock since we failed to start
@@ -248,7 +271,7 @@ public class TrafficNode {
         localSnapshotStates.put(msg.getSenderId(), (String)msg.getPayload());
         if (localSnapshotStates.size() == controllerCount) {
             StringBuilder sb = new StringBuilder();
-            sb.append("Region-").append(regionId).append(" [");
+            sb.append("Node-").append(nodeName).append(" [");
             for (Map.Entry<String, String> entry : localSnapshotStates.entrySet()) {
                 sb.append("{").append(entry.getKey()).append(": ").append(entry.getValue()).append("}");
             }
