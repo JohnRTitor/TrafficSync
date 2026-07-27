@@ -1,21 +1,41 @@
-# Person 1 - VPS bootstrap + registry
-src/trafficsync/server/NodeRegistry.java @Kirtika04
-src/trafficsync/server/HttpInspector.java @Kirtika04
+# -------------------------------------------
+# Person 1: Kirtika (@Kirtika04)
+# Responsibilities:
+# - Server I/O and Options
+# - Global Snapshot Aggregation
+# -------------------------------------------
 src/trafficsync/cli/ServerApp.java @Kirtika04
+src/trafficsync/server/ @Kirtika04
 
-# Person 2 - Site communication layer
+# -------------------------------------------
+# Person 2: Rishika (@Rishika-06-2004)
+# Responsibilities:
+# - Client-Server Socket Connection
+# - Message Passing Design
+# - Definition of Message Schema
+# ------------------------------------------
 src/trafficsync/transport/ @Rishika-06-2004
 src/trafficsync/common/ @Rishika-06-2004
 
-# Person 3 - Local state + snapshot logic
+# ------------------------------------------
+# Person 3: Suchismita (@suchi974)
+# Responsibilities:
+# - Node I/O and Options
+# - Chandy-Lamport Snapshot Algorithm
+# ------------------------------------------
 src/trafficsync/node/ @suchi974
 src/trafficsync/snapshot/ @suchi974
 src/trafficsync/cli/NodeApp.java @suchi974
-src/trafficsync/terminal/ @suchi974
 
-# Person 4 - Aggregation + integration
-src/trafficsync/server/VpsServer.java @JohnRTitor
+# ------------------------------------------
+# Person 4: Masum (@JohnRTitor)
+# Responsibilities:
+# - Configuration
+# - Terminal UI Design
+# - Documentation & Scripts
+# ------------------------------------------
 src/trafficsync/config/ @JohnRTitor
+src/trafficsync/terminal/ @JohnRTitor
 *.env.example @JohnRTitor
 /README.md @JohnRTitor
 scripts/ @JohnRTitor
