@@ -2,6 +2,7 @@ package trafficsync.server;
 
 import trafficsync.common.Message;
 import trafficsync.common.MessageType;
+import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
 import trafficsync.transport.TCPConnection;
@@ -98,8 +99,14 @@ public class VpsServer {
                 break;
             case TRAFFIC_UPDATE:
             case MARKER:
-            case MANUAL_MESSAGE:
                 relayMessage(msg);
+                break;
+            case MANUAL_MESSAGE:
+                if ("VPS".equals(msg.getReceiverId()) || "server".equalsIgnoreCase(msg.getReceiverId())) {
+                    EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
+                } else {
+                    relayMessage(msg);
+                }
                 break;
             case SNAPSHOT_RESPONSE:
                 handleSnapshotResponse(msg);

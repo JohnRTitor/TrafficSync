@@ -115,7 +115,9 @@ public class TrafficNode {
         }
         
         String resolvedTarget = target;
-        if (!peers.contains(target)) {
+        if (target.equalsIgnoreCase("server") || target.equalsIgnoreCase("vps")) {
+            resolvedTarget = "VPS";
+        } else if (!peers.contains(target)) {
             for (String peer : peers) {
                 if (peer.equals("NODE-" + target) || peer.endsWith("-" + target)) {
                     resolvedTarget = peer;
