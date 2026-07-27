@@ -101,17 +101,8 @@ Each instance opens an interactive dashboard rendered with ANSI sequences.
 - Press `i <name> + Enter` to query a node's ID, or `i self` for self ID.
 - Press `x + Enter` to gracefully exit the application.
 
-### 5. VPS Server Inspector (curl)
-Open a new terminal and inspect the global state via HTTP:
-```bash
-curl http://localhost:8080/ping
-curl http://localhost:8080/nodes
-curl http://localhost:8080/names
-curl http://localhost:8080/snapshot/status
-```
 
 ## Demonstration Checklist
 1. **Node Registration**: Start the VPS, then Node-1. Note the registration message in the VPS UI and the CONNECTED status in the Node UI.
 2. **Message Exchange**: The local controller threads in nodes will automatically simulate traffic events every 5-15s. They send events through the VPS to a random neighbor.
-3. **Chandy-Lamport**: In Node-1, type `s` and hit Enter. Node-1 records state and floods MARKER messages. Other nodes receive markers, record their states, and eventually send a SNAPSHOT_RESPONSE to the VPS. 
-4. **Global Verification**: Run `curl http://localhost:8080/snapshot/status` to view the aggregated snapshot state from the server.
+3. **Chandy-Lamport**: In Node-1, type `s` and hit Enter. Node-1 records state and floods MARKER messages. Other nodes receive markers, record their states, and eventually send a SNAPSHOT_RESPONSE to the VPS.

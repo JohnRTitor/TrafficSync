@@ -1,7 +1,6 @@
 package trafficsync.cli;
 
 import trafficsync.config.EnvReader;
-import trafficsync.server.HttpInspector;
 import trafficsync.server.VpsServer;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.KeyboardInput;
@@ -14,23 +13,19 @@ public class ServerApp {
         EnvReader config = new EnvReader(envPath);
         
         int tcpPort = config.getInt("SERVER_PORT", 9000);
-        int httpPort = config.getInt("HTTP_PORT", 8080);
         
         String menu = "[s] Snapshot All | [m <node> <msg>] Send Msg | [b <msg>] Broadcast | [r] Refresh | [c] Clear Logs | [x] Exit";
         TerminalScreen screen = new TerminalScreen("VPS Coordinator Server", menu);
         screen.setStatus("Server IP", "0.0.0.0");
         screen.setStatus("TCP Port", String.valueOf(tcpPort));
-        screen.setStatus("HTTP Port", String.valueOf(httpPort));
         
         TerminalRenderer renderer = new TerminalRenderer(screen);
         renderer.start();
         
         VpsServer server = new VpsServer(tcpPort, screen);
-        HttpInspector inspector = new HttpInspector(httpPort, server);
         
         try {
             server.start();
-            inspector.start();
         } catch (Exception e) {
             EventQueue.error("Server failed to start: " + e.getMessage());
         }
@@ -42,7 +37,6 @@ public class ServerApp {
             switch (cmd) {
                 case "x":
                     server.stop();
-                    inspector.stop();
                     renderer.stop();
                     System.exit(0);
                     break;
