@@ -344,6 +344,11 @@ public class TrafficNode {
                 incomingThreadTopology.get(to).add(from);
             }
         }
+        EventQueue.info("Thread Topology (directed graph):");
+        for (String node : threadTopology.keySet()) {
+            EventQueue.info("  " + node + " -> " + threadTopology.get(node));
+        }
+
     }
 
     private void startControllers() {
