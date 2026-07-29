@@ -31,6 +31,7 @@ public class TrafficNode {
     private String currentSnapshotId = null;
     private final Queue<Message> pendingSnapshotTriggers = new LinkedList<>();
     private final Map<String, String> localSnapshotStates = new ConcurrentHashMap<>();
+    private String designatedInitiator = null;
     
     private volatile boolean trafficGenerationEnabled = false;
     private volatile boolean registered = false;
@@ -207,17 +208,9 @@ public class TrafficNode {
             EventQueue.snapshot("Received SNAPSHOT_TRIGGER from VPS (ID: " + currentSnapshotId + ")");
         }
         
-        List<String> validInitiators = new ArrayList<>();
-        for (String node : threadTopology.keySet()) {
-            if (canReachAll(node)) {
-                validInitiators.add(node);
-            }
-        }
-        
-        if (!validInitiators.isEmpty()) {
-            String initiator = validInitiators.get((int)(Math.random() * validInitiators.size()));
-            EventQueue.snapshot("Selected initiator " + initiator + " for local snapshot.");
-            routeThreadMessage(new Message(MessageType.START_SNAPSHOT, "NODE", initiator, null, System.currentTimeMillis(), currentSnapshotId));
+        if (designatedInitiator != null) {
+            EventQueue.snapshot("Selected designated initiator " + designatedInitiator + " for local snapshot.");
+            routeThreadMessage(new Message(MessageType.START_SNAPSHOT, "NODE", designatedInitiator, null, System.currentTimeMillis(), currentSnapshotId));
         } else {
             EventQueue.error("No valid initiator found in local topology!");
             // Free the lock since we failed to start
@@ -355,12 +348,32 @@ public class TrafficNode {
 
     private void startControllers() {
         buildThreadTopology();
+        
+        List<String> threadNames = new ArrayList<>();
         for (int i = 0; i < controllerCount; i++) {
             String name = "Controller-" + i;
+            threadNames.add(name);
             ControllerThread ct = new ControllerThread(name, this, threadTopology.get(name), incomingThreadTopology.get(name), screen);
             controllers.add(ct);
             ct.start();
         }
-        EventQueue.info("Started " + controllerCount + " controller threads with local topology.");
+        
+        List<String> validInitiators = new ArrayList<>();
+        for (String node : threadNames) {
+            if (canReachAll(node)) {
+                validInitiators.add(node);
+            }
+        }
+        
+        EventQueue.info("Traffic controller threads: " + String.join(", ", threadNames));
+        
+        if (!validInitiators.isEmpty()) {
+            designatedInitiator = validInitiators.get((int)(Math.random() * validInitiators.size()));
+            EventQueue.info("Initiator candidates: " + String.join(", ", validInitiators));
+            EventQueue.info("Initiator chosen at random: " + designatedInitiator);
+        } else {
+            EventQueue.info("Initiator candidates: None");
+            EventQueue.info("Initiator chosen at random: None");
+        }
     }
 }
