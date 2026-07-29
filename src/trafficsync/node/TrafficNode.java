@@ -293,7 +293,7 @@ public class TrafficNode {
             peers.addAll(Arrays.asList(payload.split(",")));
         }
         screen.setStatus("Peers", String.valueOf(peers.size()));
-        EventQueue.info("Peer list updated: " + peers);
+        EventQueue.info("Updated Connected Sites: " + peers);
     }
     
     public void printPeers() {
