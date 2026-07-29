@@ -17,7 +17,7 @@ public class NodeApp {
         int serverPort = config.getInt("SERVER_PORT", 9000);
         int controllers = config.getInt("CONTROLLER_COUNT", 1);
         
-        String menu = "[s] Local Snapshot | [t] Toggle Traffic | [m <id> <msg>] Send Manual Msg | [i <name>] Query ID | [p] List Sites | [c] Clear Logs | [r] Reconnect | [x] Exit";
+        String menu = "[s] Local Snapshot | [t] Toggle Traffic | [m <id> <msg>] Send Manual Msg | [i <name>] Query ID | [p] List Connected Sites | [c] Clear Logs | [r] Reconnect | [x] Exit";
         TerminalScreen screen = new TerminalScreen("Smart Traffic Node: " + nodeName, menu);
         screen.setStatus("Server", serverHost + ":" + serverPort);
         screen.setStatus("Node ID", "PENDING");

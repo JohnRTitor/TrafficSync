@@ -297,7 +297,7 @@ public class TrafficNode {
     }
     
     public void printPeers() {
-        EventQueue.info("All Known Sites: " + String.join(", ", peers));
+        EventQueue.info("Connected Sites: " + String.join(", ", peers));
     }
 
     private void handleDisconnect() {
