@@ -59,8 +59,8 @@ public class ChandyLamportManager {
     }
     // Process marker
     public void handleMarker(Message markerMsg) {
-        String senderId = markerMsg.getSenderId();
-        String snapshotId = markerMsg.getSnapshotId();
+        String senderId = markerMsg.senderId();
+        String snapshotId = markerMsg.snapshotId();
         if (isRecording.compareAndSet(false, true)) {
             this.currentSnapshotId = snapshotId;
             // First marker
@@ -87,7 +87,7 @@ public class ChandyLamportManager {
     public void recordIncomingMessage(Message msg) {
         if (!isRecording.get()) return;
 
-        String senderId = msg.getSenderId();
+        String senderId = msg.senderId();
         // Save in-transit message
         if (!closedChannels.contains(senderId)) {
             channelStates.computeIfAbsent(senderId, k -> new ArrayList<>()).add(msg);

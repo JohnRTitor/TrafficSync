@@ -109,29 +109,29 @@ public class VpsServer {
     // This is the main router method. Whenever any message arrives at the server,
     // it comes here first. We check the message type and pass it to the right handler.
     private void handleMessage(Message msg, TCPConnection connection) {
-        switch (msg.getType()) {
+        switch (msg.type()) {
             case REGISTER -> handleRegister(msg, connection);
             // Traffic updates and snapshot markers are just forwarded to their intended destination.
             case TRAFFIC_UPDATE, MARKER -> relayMessage(msg);
             case MANUAL_MESSAGE -> {
                 // If a manual message is meant for the server itself, we print it to the screen.
                 // Otherwise, we send it along to another node.
-                if ("VPS".equals(msg.getReceiverId()) || "server".equalsIgnoreCase(msg.getReceiverId())) {
-                    EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
+                if ("VPS".equals(msg.receiverId()) || "server".equalsIgnoreCase(msg.receiverId())) {
+                    EventQueue.push(Event.Level.USER, "Message from " + msg.senderId() + ": " + msg.payload());
                 } else {
                     relayMessage(msg);
                 }
             }
             case SNAPSHOT_RESPONSE -> handleSnapshotResponse(msg);
             case QUERY_NODE_ID -> handleQueryNodeId(msg, connection);
-            default -> EventQueue.warn("Unknown message type: " + msg.getType());
+            default -> EventQueue.warn("Unknown message type: " + msg.type());
         }
     }
 
     // When a node registers, we generate a formal ID for it and save it in our registry.
     // Then we send an acknowledgement back so the node knows it was successful.
     private void handleRegister(Message msg, TCPConnection connection) {
-        String payloadStr = (String) msg.getPayload();
+        String payloadStr = (String) msg.payload();
         String[] parts = payloadStr.split(",");
         String nodeName = parts[0];
 
@@ -150,7 +150,7 @@ public class VpsServer {
     // A node might want to find the ID of another node by its name. This method replies
     // with the ID if we have it in the registry.
     private void handleQueryNodeId(Message msg, TCPConnection connection) {
-        String targetName = (String) msg.getPayload();
+        String targetName = (String) msg.payload();
         String resolvedNodeId = registry.resolveNodeId(targetName);
 
         String responsePayload;
@@ -160,7 +160,7 @@ public class VpsServer {
             responsePayload = "Node not found: " + targetName;
         }
 
-        connection.send(new Message(MessageType.QUERY_NODE_ID_RESPONSE, "VPS", msg.getSenderId(), responsePayload));
+        connection.send(new Message(MessageType.QUERY_NODE_ID_RESPONSE, "VPS", msg.senderId(), responsePayload));
     }
 
     // This loop sends a list of all active nodes to every connected client.
@@ -186,13 +186,13 @@ public class VpsServer {
     // This is a simple postman function. It looks up the receiver's ID in the registry
     // and sends the message object over their socket connection.
     private void relayMessage(Message msg) {
-        String target = msg.getReceiverId();
+        String target = msg.receiverId();
         String resolvedNodeId = registry.resolveNodeId(target);
         if (resolvedNodeId != null) {
             TCPConnection conn = registry.getConnection(resolvedNodeId);
             if (conn != null) {
                 conn.send(msg);
-                EventQueue.network("Relayed " + msg.getType() + " from " + msg.getSenderId() + " to " + resolvedNodeId);
+                EventQueue.network("Relayed " + msg.type() + " from " + msg.senderId() + " to " + resolvedNodeId);
             }
         } else {
             EventQueue.warn("Failed to relay message to " + target + ": Node not found");
@@ -256,11 +256,11 @@ public class VpsServer {
     // When a node finishes its local snapshot, it sends the result here.
     // We use a synchronized block because multiple nodes might report back at the exact same time.
     private void handleSnapshotResponse(Message msg) {
-        String state = (String) msg.getPayload();
+        String state = (String) msg.payload();
 
         synchronized (this) {
-            snapshotStates.put(msg.getSenderId(), state);
-            EventQueue.snapshot("Received snapshot state from " + msg.getSenderId() + ".");
+            snapshotStates.put(msg.senderId(), state);
+            EventQueue.snapshot("Received snapshot state from " + msg.senderId() + ".");
 
             if (currentSnapshotId == null) return;
 

@@ -141,9 +141,9 @@ public class TrafficNode {
     }
     // Handle messages
     private void handleMessage(Message msg) {
-        switch (msg.getType()) {
+        switch (msg.type()) {
             case REGISTER_ACK -> {
-                this.nodeId = (String) msg.getPayload();
+                this.nodeId = (String) msg.payload();
                 communicator.setNodeId(this.nodeId);
                 registered = true;
                 EventQueue.network("Registration Confirmed. Assigned ID: " + this.nodeId);
@@ -151,12 +151,12 @@ public class TrafficNode {
                 screen.setStatus("Node ID", this.nodeId);
                 startControllers();
             }
-            case PEER_LIST -> updatePeers((String) msg.getPayload());
+            case PEER_LIST -> updatePeers((String) msg.payload());
             case SNAPSHOT_TRIGGER -> handleSnapshotTrigger(msg);
-            case QUERY_NODE_ID_RESPONSE -> EventQueue.info("Query Result: " + msg.getPayload());
+            case QUERY_NODE_ID_RESPONSE -> EventQueue.info("Query Result: " + msg.payload());
             case MANUAL_MESSAGE ->
-                EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
-            default -> EventQueue.warn("Unhandled message type: " + msg.getType());
+                EventQueue.push(Event.Level.USER, "Message from " + msg.senderId() + ": " + msg.payload());
+            default -> EventQueue.warn("Unhandled message type: " + msg.type());
         }
     }
     // Handle snapshot
@@ -167,7 +167,7 @@ public class TrafficNode {
             return;
         }
         snapshotInProgress = true;
-        currentSnapshotId = msg.getSnapshotId();
+        currentSnapshotId = msg.snapshotId();
         localSnapshotStates.clear();
         String snapId = currentSnapshotId;
         Runnable onCancel = () -> {
@@ -182,7 +182,7 @@ public class TrafficNode {
             }
         };
         screen.addTask(new Task(snapId, "Local Snapshot", -1, "Waiting for markers...", onCancel));
-        if (msg.getSenderId().equals("LOCAL")) {
+        if (msg.senderId().equals("LOCAL")) {
             EventQueue.snapshot("Initiating Local Snapshot (ID: " + currentSnapshotId + ")");
         } else {
             EventQueue.snapshot("Received SNAPSHOT_TRIGGER from VPS (ID: " + currentSnapshotId + ")");
@@ -222,11 +222,11 @@ public class TrafficNode {
     }
     // Route message
     public void routeThreadMessage(Message msg) {
-        if (msg.getType() == MessageType.LOCAL_SNAPSHOT_DONE) {
+        if (msg.type() == MessageType.LOCAL_SNAPSHOT_DONE) {
             handleLocalSnapshotDone(msg);
             return;
         }
-        String target = msg.getReceiverId();
+        String target = msg.receiverId();
         for (ControllerThread ct : controllers) {
             if (ct.getThreadName().equals(target)) {
                 ct.enqueueMessage(msg);
@@ -236,11 +236,11 @@ public class TrafficNode {
     }
     // Finish snapshot
     private synchronized void handleLocalSnapshotDone(Message msg) {
-        if (currentSnapshotId == null || !currentSnapshotId.equals(msg.getSnapshotId())) {
+        if (currentSnapshotId == null || !currentSnapshotId.equals(msg.snapshotId())) {
             // Ignore stale snapshot messages
             return;
         }
-        localSnapshotStates.put(msg.getSenderId(), (String) msg.getPayload());
+        localSnapshotStates.put(msg.senderId(), (String) msg.payload());
         if (localSnapshotStates.size() == controllerCount) {
             StringBuilder sb = new StringBuilder();
             sb.append("Node-").append(nodeName).append(" [");
@@ -254,7 +254,7 @@ public class TrafficNode {
             sb.append("]");
 
             if (currentSnapshotId.startsWith("LOCAL-")) {
-                EventQueue.snapshot("Local Snapshot Result: " + sb.toString());
+                EventQueue.snapshot("Local Snapshot Result: " + sb);
             } else {
                 communicator.sendMessage(MessageType.SNAPSHOT_RESPONSE, "VPS", sb.toString());
                 EventQueue.snapshot("Sent combined regional snapshot to VPS");
