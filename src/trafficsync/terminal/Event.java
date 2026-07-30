@@ -1,10 +1,12 @@
 package trafficsync.terminal;
 
+// This class holds the details of a single log message.
+// It keeps track of when the event happened and how severe it is (like an error vs regular info).
 public class Event {
-    // Log severity categories used by the terminal renderer.
+    // These categories help us color-code the output in the terminal.
     public enum Level { INFO, WARN, ERROR, SNAPSHOT, NETWORK, USER }
     
-    // Immutable event details captured at the time of logging.
+    // We make these final because an event should not change after it has happened.
     private final Level level;
     private final String message;
     private final long timestamp;

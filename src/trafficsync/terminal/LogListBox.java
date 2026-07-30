@@ -9,11 +9,13 @@ import com.googlecode.lanterna.gui2.Interactable;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
 
+// This is a custom UI component for the Lanterna library.
+// It displays our list of events and allows the user to scroll sideways if a log message is too long.
 public class LogListBox extends AbstractListBox<Event, LogListBox> {
-    // Horizontal offset for viewing long log messages.
+    // We keep track of how far the user has scrolled to the right.
     private int horizontalScroll = 0;
 
-    // Render timestamped, color-coded events in the terminal list.
+    // We override the default drawing method so we can add colors and timestamps.
     public LogListBox(TerminalSize preferredSize) {
         super(preferredSize);
         setListItemRenderer(new ListItemRenderer<Event, LogListBox>() {
@@ -29,6 +31,7 @@ public class LogListBox extends AbstractListBox<Event, LogListBox> {
 
             @Override
             public void drawItem(TextGUIGraphics graphics, LogListBox listBox, int index, Event item, boolean selected, boolean focused) {
+                // We change the text color based on how important the event is.
                 TextColor color = switch (item.getLevel()) {
                     case ERROR -> TextColor.ANSI.RED;
                     case WARN -> TextColor.ANSI.YELLOW;
@@ -43,6 +46,8 @@ public class LogListBox extends AbstractListBox<Event, LogListBox> {
                 String levelText = String.format("%-8s", "[" + item.getLevel() + "]");
                 String text = time + " " + levelText + " " + item.getMessage();
 
+                // This part handles the sideways scrolling. If the user scrolled,
+                // we chop off the beginning of the text so the rest fits on the screen.
                 int scroll = listBox.getHorizontalScroll();
                 String textToDraw = text;
                 if (scroll > 0) {
@@ -73,7 +78,8 @@ public class LogListBox extends AbstractListBox<Event, LogListBox> {
         });
     }
 
-    // Keyboard-driven horizontal scrolling support.
+    // We listen for the left and right arrow keys and update the scroll offset.
+    // Calling invalidate() tells the library to redraw the component.
     public int getHorizontalScroll() {
         return horizontalScroll;
     }

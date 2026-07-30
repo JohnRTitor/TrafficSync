@@ -7,11 +7,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// This class reads our configuration files (like server.env) so we do not have to hardcode ports and IP addresses.
+// It loads everything into a map when the program starts.
 public class EnvReader {
-    // In-memory key/value configuration loaded from a .env-style file.
+    // We store the settings in a HashMap so we can quickly look up a value by its key.
     private final Map<String, String> envVars = new HashMap<>();
 
-    // Parse non-empty, non-comment KEY=VALUE lines; callers can safely use defaults on failure.
+    // The constructor reads the file line by line. It skips empty lines and comments,
+    // and splits the remaining lines by the equals sign to get the key and value.
     public EnvReader(String filePath) {
         try {
             List<String> lines = Files.readAllLines(Paths.get(filePath));
@@ -32,7 +35,8 @@ public class EnvReader {
         }
     }
 
-    // Typed configuration access with caller-supplied fallback values.
+    // These methods allow other classes to ask for a setting.
+    // If the setting is missing, they return a safe default value so the program does not crash.
     public String get(String key, String defaultValue) {
         return envVars.getOrDefault(key, defaultValue);
     }

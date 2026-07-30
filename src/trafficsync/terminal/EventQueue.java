@@ -3,11 +3,15 @@ package trafficsync.terminal;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+// This acts as a mailbox between our background network threads and the user interface.
+// Network threads drop events in here, and the terminal reads them out to display on screen.
 public class EventQueue {
-    // Shared non-blocking event channel between background work and the terminal UI.
+    // We use a BlockingQueue because it is thread-safe. If multiple nodes send updates at the exact
+    // same millisecond, the queue will line them up without losing any data.
     private static final BlockingQueue<Event> queue = new LinkedBlockingQueue<>();
     
-    // Convenience logging methods for the application's event categories.
+    // These are shortcut methods. Instead of creating an Event object manually every time,
+    // we can just call EventQueue.info("something happened").
     public static void push(Event.Level level, String message) {
         queue.offer(new Event(level, message));
     }

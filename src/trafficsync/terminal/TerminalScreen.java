@@ -20,13 +20,18 @@ import java.util.LinkedHashMap;
 import java.util.function.Consumer;
 import java.util.Arrays;
 
+// This is the main user interface class.
+// It uses the Lanterna library to draw windows, panels, and text boxes directly inside the command prompt.
 public class TerminalScreen {
 
     private final String title;
     private final String menu;
     private final Map<String, String> statusFields = new ConcurrentHashMap<>();
     private final Map<String, Task> activeTasks = new LinkedHashMap<>();
+
     private final LinkedList<Event> logs = new LinkedList<>();
+    
+    // We limit the number of logs so the program does not run out of memory if it runs for a long time.
     private final int MAX_LOGS = 1000;
     private volatile boolean running = false;
     private Screen screen;
@@ -41,6 +46,7 @@ public class TerminalScreen {
         this.menu = menu;
     }
 
+    // We use this to change values like the server IP or port on the top status bar.
     public void setStatus(String key, String value) {
         statusFields.put(key, value);
         updateStatusPanel();
@@ -95,6 +101,8 @@ public class TerminalScreen {
         });
     }
 
+    // This redraws the task panel. We need to run UI updates on the special GUI thread
+    // using invokeLater, otherwise the screen might glitch if a background network thread updates it.
     private synchronized void updateTasksPanel() {
         if (gui == null || tasksPanel == null) return;
         
@@ -140,6 +148,7 @@ public class TerminalScreen {
         });
     }
 
+    // This method sets up all the boxes and panels and starts the screen loop.
     public void start(Consumer<String> onCommand) {
         try {
             DefaultTerminalFactory factory = new DefaultTerminalFactory();
@@ -148,11 +157,11 @@ public class TerminalScreen {
                 factory.setForceTextTerminal(true);
                 screen = factory.createScreen();
             } catch (IOException e) {
-                // Fallback for Windows environments (like IDE consoles or mintty) that lack stty
+                // If the normal text terminal fails (like on Windows CMD), we fall back to a popup window.
                 factory = new DefaultTerminalFactory();
                 factory.setForceTextTerminal(false);
                 factory.setPreferTerminalEmulator(true);
-                screen = factory.createScreen(); // Force Swing terminal
+                screen = factory.createScreen();
             }
             screen.startScreen();
             running = true;
@@ -201,6 +210,7 @@ public class TerminalScreen {
 
             gui = new MultiWindowTextGUI(screen, new DefaultWindowManager(), new EmptySpace(TextColor.ANSI.DEFAULT));
             
+            // We create a background loop that constantly checks if any new logs arrived from the network.
             Thread eventThread = new Thread(() -> {
                 while (running) {
                     Event e = EventQueue.poll();

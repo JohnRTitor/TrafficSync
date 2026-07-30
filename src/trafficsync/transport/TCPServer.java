@@ -5,6 +5,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.function.Consumer;
 
+// This class is a simple wrapper around the standard Java ServerSocket.
+// It listens on a specific port in a background thread and triggers a callback 
+// whenever a new client connects.
 public class TCPServer {
     private final int port;
     private final Consumer<Socket> onClientConnected;
@@ -17,6 +20,7 @@ public class TCPServer {
         this.onClientConnected = onClientConnected;
     }
 
+    // This starts the server socket and creates a new background thread to wait for connections.
     public void start() throws IOException {
         serverSocket = new ServerSocket(port);
         running = true;
@@ -25,6 +29,8 @@ public class TCPServer {
         acceptorThread.start();
     }
 
+    // This is the loop that runs in the background. It will pause at serverSocket.accept()
+    // until a node tries to connect. Once connected, it passes the new socket to our callback function.
     private void acceptLoop() {
         while (running && !serverSocket.isClosed()) {
             try {

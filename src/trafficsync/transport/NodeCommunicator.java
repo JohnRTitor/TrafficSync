@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.function.Consumer;
 
+// This class handles the network connection from the perspective of a traffic node.
+// It connects to the central VPS server and forwards any received messages to our local logic.
 public class NodeCommunicator {
     private String nodeId;
     private final String serverHost;
@@ -29,6 +31,7 @@ public class NodeCommunicator {
         this.nodeId = nodeId;
     }
 
+    // This method opens a socket to the VPS server and starts the TCPConnection listener.
     public void start() throws IOException {
         Socket socket = new Socket(serverHost, serverPort);
         connection = new TCPConnection(socket, onMessageReceived, conn -> {
@@ -45,6 +48,7 @@ public class NodeCommunicator {
         }
     }
 
+    // These are helper methods so we don't have to construct Message objects manually every time.
     public void sendMessage(Message message) {
         if (connection != null) {
             connection.send(message);
