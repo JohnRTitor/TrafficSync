@@ -4,8 +4,8 @@ import com.googlecode.lanterna.SGR;
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.TextColor;
 import com.googlecode.lanterna.gui2.AbstractListBox;
-import com.googlecode.lanterna.gui2.TextGUIGraphics;
 import com.googlecode.lanterna.gui2.Interactable;
+import com.googlecode.lanterna.gui2.TextGUIGraphics;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
 
@@ -30,16 +30,23 @@ public class LogListBox extends AbstractListBox<Event, LogListBox> {
             }
 
             @Override
-            public void drawItem(TextGUIGraphics graphics, LogListBox listBox, int index, Event item, boolean selected, boolean focused) {
+            public void drawItem(
+                    TextGUIGraphics graphics,
+                    LogListBox listBox,
+                    int index,
+                    Event item,
+                    boolean selected,
+                    boolean focused) {
                 // We change the text color based on how important the event is.
-                TextColor color = switch (item.getLevel()) {
-                    case ERROR -> TextColor.ANSI.RED;
-                    case WARN -> TextColor.ANSI.YELLOW;
-                    case SNAPSHOT -> TextColor.ANSI.BLUE;
-                    case NETWORK -> TextColor.ANSI.GREEN;
-                    case USER -> TextColor.ANSI.CYAN;
-                    default -> TextColor.ANSI.DEFAULT;
-                };
+                TextColor color =
+                        switch (item.getLevel()) {
+                            case ERROR -> TextColor.ANSI.RED;
+                            case WARN -> TextColor.ANSI.YELLOW;
+                            case SNAPSHOT -> TextColor.ANSI.BLUE;
+                            case NETWORK -> TextColor.ANSI.GREEN;
+                            case USER -> TextColor.ANSI.CYAN;
+                            default -> TextColor.ANSI.DEFAULT;
+                        };
 
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm:ss");
                 String time = sdf.format(new java.util.Date(item.getTimestamp()));

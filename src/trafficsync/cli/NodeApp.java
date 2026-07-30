@@ -1,4 +1,5 @@
 package trafficsync.cli;
+
 import trafficsync.config.EnvReader;
 import trafficsync.node.TrafficNode;
 import trafficsync.terminal.EventQueue;
@@ -17,8 +18,9 @@ public class NodeApp {
         int controllers = config.getInt("CONTROLLER_COUNT", 1);
         // Command menu
         String menu = """
-                      [s] Snapshot | [t] Toggle Traffic | [m <node> <msg>] Send | [i <node>] Info
-                      [p] Peers | [c] Clear | [r] Reconnect | [x] Exit""";
+            [s] Snapshot | [t] Toggle Traffic | [m <node> <msg>] Send | [i <node>] Info
+            [p] Peers | [c] Clear | [r] Reconnect | [x] Exit\
+            """;
 
         // Create terminal
         TerminalScreen screen = new TerminalScreen("Smart Traffic Node: " + nodeName, menu);

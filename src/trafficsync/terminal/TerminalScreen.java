@@ -2,23 +2,17 @@ package trafficsync.terminal;
 
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.TextColor;
-import com.googlecode.lanterna.gui2.*;
-import com.googlecode.lanterna.gui2.Borders;
 import com.googlecode.lanterna.graphics.SimpleTheme;
-import com.googlecode.lanterna.screen.Screen;
-import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
+import com.googlecode.lanterna.gui2.*;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
-import com.googlecode.lanterna.SGR;
+import com.googlecode.lanterna.screen.Screen;
+import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.LinkedHashMap;
 import java.util.function.Consumer;
-import java.util.Arrays;
 
 // This is the main user interface class.
 // It uses the Lanterna library to draw windows, panels, and text boxes directly inside the command prompt.
@@ -30,7 +24,7 @@ public class TerminalScreen {
     private final Map<String, Task> activeTasks = new LinkedHashMap<>();
 
     private final LinkedList<Event> logs = new LinkedList<>();
-    
+
     // We limit the number of logs so the program does not run out of memory if it runs for a long time.
     private final int MAX_LOGS = 1000;
     private volatile boolean running = false;
@@ -84,12 +78,12 @@ public class TerminalScreen {
         }
         updateLogPanel();
     }
-    
+
     public synchronized void clearLogs() {
         logs.clear();
         updateLogPanel();
     }
-    
+
     private void updateStatusPanel() {
         if (gui == null || statusPanel == null) return;
         gui.getGUIThread().invokeLater(() -> {
@@ -105,9 +99,9 @@ public class TerminalScreen {
     // using invokeLater, otherwise the screen might glitch if a background network thread updates it.
     private synchronized void updateTasksPanel() {
         if (gui == null || tasksPanel == null) return;
-        
+
         List<Task> currentTasks = new ArrayList<>(activeTasks.values());
-        
+
         gui.getGUIThread().invokeLater(() -> {
             tasksPanel.removeAllComponents();
             if (currentTasks.isEmpty()) {
@@ -122,7 +116,7 @@ public class TerminalScreen {
                         for (int i = 0; i < totalBars; i++) {
                             bar.append(i < filled ? "=" : (i == filled ? ">" : "."));
                         }
-                        bar.append("] ").append(String.format("%d%%", (int)(t.progress * 100)));
+                        bar.append("] ").append(String.format("%d%%", (int) (t.progress * 100)));
                         tasksPanel.addComponent(new Label(bar.toString()).setForegroundColor(TextColor.ANSI.YELLOW));
                     }
                     tasksPanel.addComponent(new Label("  " + t.status));
@@ -133,14 +127,14 @@ public class TerminalScreen {
 
     private synchronized void updateLogPanel() {
         if (gui == null || logListBox == null) return;
-        
+
         List<Event> currentLogs = new ArrayList<>(logs);
         gui.getGUIThread().invokeLater(() -> {
             logListBox.clearItems();
             for (Event e : currentLogs) {
                 logListBox.addItem(e);
             }
-            
+
             // Auto-scroll to bottom
             if (logListBox.getItemCount() > 0) {
                 logListBox.setSelectedIndex(logListBox.getItemCount() - 1);
@@ -167,7 +161,7 @@ public class TerminalScreen {
             running = true;
 
             Panel mainPanel = new Panel(new LinearLayout(Direction.VERTICAL));
-            
+
             statusPanel = new Panel(new GridLayout(2));
             mainPanel.addComponent(statusPanel.withBorder(Borders.singleLine(title)));
             updateStatusPanel();
@@ -197,7 +191,7 @@ public class TerminalScreen {
                     return super.handleKeyStroke(keyStroke);
                 }
             };
-            
+
             Panel inputPanel = new Panel(new LinearLayout(Direction.HORIZONTAL));
             inputPanel.addComponent(new Label("> ").setForegroundColor(TextColor.ANSI.CYAN));
             inputPanel.addComponent(commandInput);
@@ -209,7 +203,7 @@ public class TerminalScreen {
             window.setComponent(mainPanel);
 
             gui = new MultiWindowTextGUI(screen, new DefaultWindowManager(), new EmptySpace(TextColor.ANSI.DEFAULT));
-            
+
             // We create a background loop that constantly checks if any new logs arrived from the network.
             Thread eventThread = new Thread(() -> {
                 while (running) {
@@ -230,7 +224,7 @@ public class TerminalScreen {
             eventThread.start();
 
             gui.addWindowAndWait(window);
-            
+
             running = false;
             eventThread.interrupt();
             screen.stopScreen();

@@ -8,7 +8,7 @@ import trafficsync.terminal.TerminalScreen;
 // This is the main class that starts the central server for our traffic network.
 // It hosts the VPS coordinator and displays a terminal interface so we can monitor all sites.
 public class ServerApp {
-    
+
     // The main method starts the server. It reads the port number from a file,
     // builds the user interface, starts accepting connections, and then listens
     // for commands typed by the user.
@@ -17,22 +17,23 @@ public class ServerApp {
         // If no file is provided, we use the default .env file.
         String envPath = args.length > 0 ? args[0] : ".env";
         EnvReader config = new EnvReader(envPath);
-        
+
         int tcpPort = config.getInt("SERVER_PORT", 9000);
-        
+
         String menu = """
-                      [s] Snapshot All | [m <node> <msg>] Send Msg | [b <msg>] Broadcast
-                      [c] Clear Logs | [x] Exit""";
-                      
+            [s] Snapshot All | [m <node> <msg>] Send Msg | [b <msg>] Broadcast
+            [c] Clear Logs | [x] Exit\
+            """;
+
         // We set up the visual terminal screen before we actually start the server logic.
         // This makes sure the user sees the dashboard immediately even if the server takes time to load.
         TerminalScreen screen = new TerminalScreen("VPS Coordinator Server", menu);
         screen.setStatus("Server IP", "0.0.0.0");
         screen.setStatus("TCP Port", String.valueOf(tcpPort));
-        
+
         // Create the actual server object that will handle incoming node connections.
         VpsServer server = new VpsServer(tcpPort, screen);
-        
+
         try {
             // Attempt to open the server port and start listening for traffic nodes.
             server.start();
@@ -40,7 +41,7 @@ public class ServerApp {
             // If the port is already in use or another network error happens, we show an error message.
             EventQueue.error("Server failed to start: " + e.getMessage());
         }
-        
+
         // We set up a callback function that handles any commands the user types into the terminal.
         // This allows us to interact with the server while it is running in the background.
         screen.start(command -> {

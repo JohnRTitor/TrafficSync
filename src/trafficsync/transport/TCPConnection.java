@@ -19,11 +19,12 @@ public class TCPConnection {
     private Thread listenerThread;
     private volatile boolean running = true;
     // We pass in two callbacks: one to run when a message arrives, and one for when the connection dies.
-    public TCPConnection(Socket socket, Consumer<Message> onMessageReceived, Consumer<TCPConnection> onDisconnected) throws IOException {
+    public TCPConnection(Socket socket, Consumer<Message> onMessageReceived, Consumer<TCPConnection> onDisconnected)
+            throws IOException {
         this.socket = socket;
         this.onMessageReceived = onMessageReceived;
         this.onDisconnected = onDisconnected;
-        
+
         // It is very important to create the ObjectOutputStream first. If both sides create the input stream
         // first, they will sit forever waiting for a header and the program will freeze.
         this.out = new ObjectOutputStream(socket.getOutputStream());

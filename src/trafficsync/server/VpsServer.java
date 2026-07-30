@@ -11,12 +11,12 @@ import trafficsync.transport.TCPServer;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.PrintWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 // This is the core coordinator for the entire traffic system.
@@ -65,7 +65,7 @@ public class VpsServer {
     public NodeRegistry getRegistry() {
         return registry;
     }
-    
+
     public ConcurrentHashMap<String, String> getSnapshotStates() {
         return snapshotStates;
     }
@@ -80,14 +80,10 @@ public class VpsServer {
         try {
             EventQueue.info("New connection from " + socket.getRemoteSocketAddress());
             TCPConnection[] connRef = new TCPConnection[1];
-            
+
             // We set up the connection with two callback functions: one for receiving messages,
             // and one for dealing with the client when they disconnect.
-            connRef[0] = new TCPConnection(
-                socket,
-                msg -> handleMessage(msg, connRef[0]),
-                this::handleDisconnect
-            );
+            connRef[0] = new TCPConnection(socket, msg -> handleMessage(msg, connRef[0]), this::handleDisconnect);
             connRef[0].start();
         } catch (IOException e) {
             EventQueue.error("Failed to establish connection: " + e.getMessage());
@@ -138,40 +134,40 @@ public class VpsServer {
         String payloadStr = (String) msg.getPayload();
         String[] parts = payloadStr.split(",");
         String nodeName = parts[0];
-        
+
         String assignedNodeId = registry.generateNodeId();
-        
+
         registry.registerNode(assignedNodeId, nodeName, connection);
         EventQueue.network("REGISTER successful: " + assignedNodeId + " (Name: " + nodeName + ")");
-        
+
         connection.send(new Message(MessageType.REGISTER_ACK, "VPS", assignedNodeId, assignedNodeId));
-        
+
         // After a new node joins, we need to update everyone's address book.
         broadcastPeers();
         updateScreenStatus();
     }
-    
+
     // A node might want to find the ID of another node by its name. This method replies
     // with the ID if we have it in the registry.
     private void handleQueryNodeId(Message msg, TCPConnection connection) {
         String targetName = (String) msg.getPayload();
         String resolvedNodeId = registry.resolveNodeId(targetName);
-        
+
         String responsePayload;
         if (resolvedNodeId != null) {
             responsePayload = targetName + " has Node ID: " + resolvedNodeId;
         } else {
             responsePayload = "Node not found: " + targetName;
         }
-        
+
         connection.send(new Message(MessageType.QUERY_NODE_ID_RESPONSE, "VPS", msg.getSenderId(), responsePayload));
     }
-    
+
     // This loop sends a list of all active nodes to every connected client.
     // We send everyone the list EXCEPT themselves, so they know who they can talk to.
     private void broadcastPeers() {
         Set<String> allNodes = registry.getNodes();
-        
+
         for (String nodeId : allNodes) {
             TCPConnection conn = registry.getConnection(nodeId);
             if (conn != null) {
@@ -186,7 +182,7 @@ public class VpsServer {
             }
         }
     }
-    
+
     // This is a simple postman function. It looks up the receiver's ID in the registry
     // and sends the message object over their socket connection.
     private void relayMessage(Message msg) {
@@ -230,14 +226,14 @@ public class VpsServer {
         }
         EventQueue.info("Broadcasted message: " + message);
     }
-    
+
     // This method is called when the user hits 's' in the terminal.
     // It creates a new snapshot session and tells every node to start recording their state.
     public void triggerGlobalSnapshot() {
         currentSnapshotId = "SNAP-" + System.currentTimeMillis();
         snapshotStates.clear();
         EventQueue.snapshot("Triggering global snapshot: " + currentSnapshotId);
-        
+
         // We set up a visual task in the terminal to show progress as nodes report back.
         String snapId = currentSnapshotId;
         Runnable onCancel = () -> {
@@ -246,12 +242,13 @@ public class VpsServer {
             currentSnapshotId = null;
         };
         screen.addTask(new Task(snapId, "Global Snapshot", 0.0, "Waiting for node responses...", onCancel));
-        
+
         // Broadcast the snapshot trigger to every single connected site.
         for (String nodeId : registry.getNodes()) {
             TCPConnection conn = registry.getConnection(nodeId);
             if (conn != null) {
-                conn.send(new Message(MessageType.SNAPSHOT_TRIGGER, "VPS", nodeId, null, System.currentTimeMillis(), snapId));
+                conn.send(new Message(
+                        MessageType.SNAPSHOT_TRIGGER, "VPS", nodeId, null, System.currentTimeMillis(), snapId));
             }
         }
     }
@@ -260,28 +257,31 @@ public class VpsServer {
     // We use a synchronized block because multiple nodes might report back at the exact same time.
     private void handleSnapshotResponse(Message msg) {
         String state = (String) msg.getPayload();
-        
+
         synchronized (this) {
             snapshotStates.put(msg.getSenderId(), state);
             EventQueue.snapshot("Received snapshot state from " + msg.getSenderId() + ".");
-            
+
             if (currentSnapshotId == null) return;
-            
+
             int totalNodes = registry.getNodes().size();
             int received = snapshotStates.size();
-            
+
             // Once we have received a state from every registered node, the snapshot is complete.
             if (received >= totalNodes) {
                 EventQueue.snapshot("Global Snapshot Complete.");
                 screen.removeTask(currentSnapshotId);
-                
+
                 // Write the final result out to a text file for record keeping.
                 saveAggregatedSnapshot(currentSnapshotId, snapshotStates);
-                
+
                 currentSnapshotId = null;
             } else {
                 // Otherwise we just update the progress bar on the screen.
-                screen.updateTask(currentSnapshotId, (double) received / totalNodes, "Waiting for node responses... " + received + "/" + totalNodes);
+                screen.updateTask(
+                        currentSnapshotId,
+                        (double) received / totalNodes,
+                        "Waiting for node responses... " + received + "/" + totalNodes);
             }
         }
     }
@@ -291,7 +291,7 @@ public class VpsServer {
         if (!dir.exists()) {
             dir.mkdirs();
         }
-        
+
         File file = new File(dir, snapshotId + ".txt");
         try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
             writer.println("Global Snapshot ID: " + snapshotId);

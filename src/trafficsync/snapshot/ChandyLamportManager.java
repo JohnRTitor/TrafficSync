@@ -1,8 +1,13 @@
 package trafficsync.snapshot;
+
 import trafficsync.common.Message;
 import trafficsync.common.MessageType;
 import trafficsync.terminal.EventQueue;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -26,8 +31,8 @@ public class ChandyLamportManager {
     private String savedLocalState = "";
     private volatile String currentSnapshotId = null;
     // Initialize manager
-    public ChandyLamportManager(String ownerId, List<String> outgoingNeighbors,
-                                List<String> incomingNeighbors, MessageSender sender) {
+    public ChandyLamportManager(
+            String ownerId, List<String> outgoingNeighbors, List<String> incomingNeighbors, MessageSender sender) {
         this.ownerId = ownerId;
         this.outgoingNeighbors = outgoingNeighbors;
         this.incomingNeighbors = incomingNeighbors;
@@ -80,8 +85,7 @@ public class ChandyLamportManager {
 
     // Record incoming message
     public void recordIncomingMessage(Message msg) {
-        if (!isRecording.get())
-            return;
+        if (!isRecording.get()) return;
 
         String senderId = msg.getSenderId();
         // Save in-transit message
@@ -122,20 +126,15 @@ public class ChandyLamportManager {
                 report.append("[").append(neighbor).append(": empty] ");
             } else {
                 report.append("[")
-                      .append(neighbor)
-                      .append(": ")
-                      .append(channelStates.get(neighbor).size())
-                      .append(" msgs] ");
+                        .append(neighbor)
+                        .append(": ")
+                        .append(channelStates.get(neighbor).size())
+                        .append(" msgs] ");
             }
         }
         String finalReport = report.toString();
         EventQueue.snapshot("Snapshot Complete: " + finalReport);
         // Notify node
-        sender.sendMessage(
-                MessageType.LOCAL_SNAPSHOT_DONE,
-                "NODE",
-                finalReport,
-                currentSnapshotId
-        );
+        sender.sendMessage(MessageType.LOCAL_SNAPSHOT_DONE, "NODE", finalReport, currentSnapshotId);
     }
 }

@@ -15,11 +15,12 @@ public class Message implements Serializable {
     private final String receiverId;
     private final Object payload;
     private final long timestamp;
-    private final String snapshotId; 
+    private final String snapshotId;
 
     // This constructor is used when a message is part of a Chandy-Lamport snapshot.
     // We need the snapshot ID to know which global snapshot this belongs to.
-    public Message(MessageType type, String senderId, String receiverId, Object payload, long timestamp, String snapshotId) {
+    public Message(
+            MessageType type, String senderId, String receiverId, Object payload, long timestamp, String snapshotId) {
         this.type = type;
         this.senderId = senderId;
         this.receiverId = receiverId;
@@ -27,27 +28,43 @@ public class Message implements Serializable {
         this.timestamp = timestamp;
         this.snapshotId = snapshotId;
     }
-    
+
     public Message(MessageType type, String senderId, String receiverId, Object payload) {
         this(type, senderId, receiverId, payload, System.currentTimeMillis(), null);
     }
 
     // The getters allow other parts of the program to read the message data safely.
-    public MessageType getType() { return type; }
-    public String getSenderId() { return senderId; }
-    public String getReceiverId() { return receiverId; }
-    public Object getPayload() { return payload; }
-    public long getTimestamp() { return timestamp; }
-    public String getSnapshotId() { return snapshotId; }
+    public MessageType getType() {
+        return type;
+    }
+
+    public String getSenderId() {
+        return senderId;
+    }
+
+    public String getReceiverId() {
+        return receiverId;
+    }
+
+    public Object getPayload() {
+        return payload;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public String getSnapshotId() {
+        return snapshotId;
+    }
 
     @Override
     public String toString() {
-        return "Message{" +
-                "type=" + type +
-                ", senderId='" + senderId + '\'' +
-                ", receiverId='" + receiverId + '\'' +
-                ", payload=" + payload +
-                ", snapshotId=" + snapshotId +
-                '}';
+        return "Message{" + "type="
+                + type + ", senderId='"
+                + senderId + '\'' + ", receiverId='"
+                + receiverId + '\'' + ", payload="
+                + payload + ", snapshotId="
+                + snapshotId + '}';
     }
 }

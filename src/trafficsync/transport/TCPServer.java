@@ -6,7 +6,7 @@ import java.net.Socket;
 import java.util.function.Consumer;
 
 // This class is a simple wrapper around the standard Java ServerSocket.
-// It listens on a specific port in a background thread and triggers a callback 
+// It listens on a specific port in a background thread and triggers a callback
 // whenever a new client connects.
 public class TCPServer {
     private final int port;

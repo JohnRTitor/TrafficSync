@@ -15,18 +15,22 @@ public class NodeCommunicator {
     private final int serverPort;
     private final Consumer<Message> onMessageReceived;
     private final Runnable onDisconnect;
-    
+
     private TCPConnection connection;
 
-    public NodeCommunicator(String nodeId, String serverHost, int serverPort, 
-                              Consumer<Message> onMessageReceived, Runnable onDisconnect) {
+    public NodeCommunicator(
+            String nodeId,
+            String serverHost,
+            int serverPort,
+            Consumer<Message> onMessageReceived,
+            Runnable onDisconnect) {
         this.nodeId = nodeId;
         this.serverHost = serverHost;
         this.serverPort = serverPort;
         this.onMessageReceived = onMessageReceived;
         this.onDisconnect = onDisconnect;
     }
-    
+
     public void setNodeId(String nodeId) {
         this.nodeId = nodeId;
     }

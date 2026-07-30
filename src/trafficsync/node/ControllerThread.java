@@ -1,4 +1,5 @@
 package trafficsync.node;
+
 import trafficsync.common.Message;
 import trafficsync.common.MessageType;
 import trafficsync.snapshot.ChandyLamportManager;
@@ -17,7 +18,12 @@ public class ControllerThread extends Thread {
     private final List<String> outgoingNeighbors;
     private final ChandyLamportManager snapshotManager;
     // Initialize controller
-    public ControllerThread(String name, TrafficNode node, List<String> outgoingNeighbors, List<String> incomingNeighbors, TerminalScreen screen) {
+    public ControllerThread(
+            String name,
+            TrafficNode node,
+            List<String> outgoingNeighbors,
+            List<String> incomingNeighbors,
+            TerminalScreen screen) {
         this.name = name;
         this.node = node;
         this.outgoingNeighbors = outgoingNeighbors;
@@ -41,13 +47,14 @@ public class ControllerThread extends Thread {
     public String getThreadName() {
         return name;
     }
+
     @Override
     public void run() {
         // Main processing loop
         while (running) {
             try {
                 // Wait for incoming message
-                long sleepTime = 5000 + (long)(Math.random() * 5000);
+                long sleepTime = 5000 + (long) (Math.random() * 5000);
                 Message msg = inbox.poll(sleepTime, TimeUnit.MILLISECONDS);
 
                 if (msg != null) {
@@ -55,12 +62,11 @@ public class ControllerThread extends Thread {
                 } else {
                     // Generate traffic update
                     if (running && node.isTrafficGenerationEnabled() && !outgoingNeighbors.isEmpty()) {
-                        int cars = (int)(Math.random() * 50);
-                        String target = outgoingNeighbors.get((int)(Math.random() * outgoingNeighbors.size()));
+                        int cars = (int) (Math.random() * 50);
+                        String target = outgoingNeighbors.get((int) (Math.random() * outgoingNeighbors.size()));
                         String payload = name + " processed " + cars + " cars.";
 
-                        node.routeThreadMessage(
-                                new Message(MessageType.TRAFFIC_UPDATE, name, target, payload));
+                        node.routeThreadMessage(new Message(MessageType.TRAFFIC_UPDATE, name, target, payload));
                     }
                 }
 
@@ -76,7 +82,8 @@ public class ControllerThread extends Thread {
             case START_SNAPSHOT -> snapshotManager.initiateSnapshot(msg.getSnapshotId());
             case MARKER -> snapshotManager.handleMarker(msg);
             case TRAFFIC_UPDATE -> {
-                EventQueue.info(name + " received " + msg.getType() + " from " + msg.getSenderId() + ": " + msg.getPayload());
+                EventQueue.info(
+                        name + " received " + msg.getType() + " from " + msg.getSenderId() + ": " + msg.getPayload());
                 snapshotManager.recordIncomingMessage(msg);
             }
             default -> {}

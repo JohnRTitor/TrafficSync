@@ -1,11 +1,13 @@
 package trafficsync.node;
+
 import trafficsync.common.Message;
 import trafficsync.common.MessageType;
 import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
-import trafficsync.terminal.TerminalScreen;
 import trafficsync.terminal.Task;
+import trafficsync.terminal.TerminalScreen;
 import trafficsync.transport.NodeCommunicator;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,8 +23,8 @@ public class TrafficNode {
     private final TerminalScreen screen;
     private NodeCommunicator communicator;
     private final List<ControllerThread> controllers = new ArrayList<>();
-    
-    // Topology and snapshot data 
+
+    // Topology and snapshot data
     private final Map<String, List<String>> threadTopology = new HashMap<>();
     private final Map<String, List<String>> incomingThreadTopology = new HashMap<>();
     private volatile boolean snapshotInProgress = false;
@@ -33,8 +35,7 @@ public class TrafficNode {
     private volatile boolean trafficGenerationEnabled = false;
     private volatile boolean registered = false;
     // Initialize node
-    public TrafficNode(String nodeName, String serverHost, int serverPort, 
-                       int controllerCount, TerminalScreen screen) {
+    public TrafficNode(String nodeName, String serverHost, int serverPort, int controllerCount, TerminalScreen screen) {
         this.nodeName = nodeName;
         this.nodeId = nodeName; // Temporary until registered
         this.serverHost = serverHost;
@@ -46,7 +47,8 @@ public class TrafficNode {
     public void start() {
         try {
             EventQueue.info("Connecting to VPS at " + serverHost + ":" + serverPort + "...");
-            communicator = new NodeCommunicator(nodeId, serverHost, serverPort, this::handleMessage, this::handleDisconnect);
+            communicator =
+                    new NodeCommunicator(nodeId, serverHost, serverPort, this::handleMessage, this::handleDisconnect);
             communicator.start();
             // Register with VPS
             String payload = nodeName + "," + controllerCount + ",ACTIVE";
@@ -71,7 +73,7 @@ public class TrafficNode {
         if (registered) {
             EventQueue.warn("Already connected to VPS.");
             return;
-        }   
+        }
         for (ControllerThread ct : controllers) {
             ct.stopRunning();
         }
@@ -88,7 +90,8 @@ public class TrafficNode {
             return;
         }
         String localSnapshotId = "LOCAL-" + System.currentTimeMillis();
-        handleSnapshotTrigger(new Message(MessageType.SNAPSHOT_TRIGGER, "LOCAL", nodeId, null, System.currentTimeMillis(), localSnapshotId));
+        handleSnapshotTrigger(new Message(
+                MessageType.SNAPSHOT_TRIGGER, "LOCAL", nodeId, null, System.currentTimeMillis(), localSnapshotId));
     }
     // Toggle traffic
     public void toggleTrafficGeneration() {
@@ -104,7 +107,7 @@ public class TrafficNode {
         if (!registered) {
             EventQueue.warn("Cannot send manual message: Node not registered with VPS.");
             return;
-        }   
+        }
         String resolvedTarget = target;
         if (target.equalsIgnoreCase("server") || target.equalsIgnoreCase("vps")) {
             resolvedTarget = "VPS";
@@ -151,7 +154,8 @@ public class TrafficNode {
             case PEER_LIST -> updatePeers((String) msg.getPayload());
             case SNAPSHOT_TRIGGER -> handleSnapshotTrigger(msg);
             case QUERY_NODE_ID_RESPONSE -> EventQueue.info("Query Result: " + msg.getPayload());
-            case MANUAL_MESSAGE -> EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
+            case MANUAL_MESSAGE ->
+                EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
             default -> EventQueue.warn("Unhandled message type: " + msg.getType());
         }
     }
@@ -185,7 +189,13 @@ public class TrafficNode {
         }
         if (designatedInitiator != null) {
             EventQueue.snapshot("Selected designated initiator " + designatedInitiator + " for local snapshot.");
-            routeThreadMessage(new Message(MessageType.START_SNAPSHOT, "NODE", designatedInitiator, null, System.currentTimeMillis(), currentSnapshotId));
+            routeThreadMessage(new Message(
+                    MessageType.START_SNAPSHOT,
+                    "NODE",
+                    designatedInitiator,
+                    null,
+                    System.currentTimeMillis(),
+                    currentSnapshotId));
         } else {
             EventQueue.error("No valid initiator found in local topology!");
             // Free the lock since we failed to start
@@ -198,7 +208,7 @@ public class TrafficNode {
         Set<String> visited = new HashSet<>();
         Queue<String> queue = new LinkedList<>();
         queue.add(startNode);
-        visited.add(startNode);   
+        visited.add(startNode);
         while (!queue.isEmpty()) {
             String curr = queue.poll();
             for (String neighbor : threadTopology.get(curr)) {
@@ -229,16 +239,20 @@ public class TrafficNode {
         if (currentSnapshotId == null || !currentSnapshotId.equals(msg.getSnapshotId())) {
             // Ignore stale snapshot messages
             return;
-        }   
-        localSnapshotStates.put(msg.getSenderId(), (String)msg.getPayload());
+        }
+        localSnapshotStates.put(msg.getSenderId(), (String) msg.getPayload());
         if (localSnapshotStates.size() == controllerCount) {
             StringBuilder sb = new StringBuilder();
             sb.append("Node-").append(nodeName).append(" [");
             for (Map.Entry<String, String> entry : localSnapshotStates.entrySet()) {
-                sb.append("{").append(entry.getKey()).append(": ").append(entry.getValue()).append("}");
+                sb.append("{")
+                        .append(entry.getKey())
+                        .append(": ")
+                        .append(entry.getValue())
+                        .append("}");
             }
             sb.append("]");
-            
+
             if (currentSnapshotId.startsWith("LOCAL-")) {
                 EventQueue.snapshot("Local Snapshot Result: " + sb.toString());
             } else {
@@ -299,10 +313,10 @@ public class TrafficNode {
             connected.add(target);
         }
         // Add random edges
-        int extraEdges = controllerCount; 
+        int extraEdges = controllerCount;
         for (int i = 0; i < extraEdges; i++) {
-            String from = nodes.get((int)(Math.random() * nodes.size()));
-            String to = nodes.get((int)(Math.random() * nodes.size()));
+            String from = nodes.get((int) (Math.random() * nodes.size()));
+            String to = nodes.get((int) (Math.random() * nodes.size()));
             if (!from.equals(to) && !threadTopology.get(from).contains(to)) {
                 threadTopology.get(from).add(to);
                 incomingThreadTopology.get(to).add(from);
@@ -315,12 +329,13 @@ public class TrafficNode {
     }
     // Start controllers
     private void startControllers() {
-        buildThreadTopology();   
+        buildThreadTopology();
         List<String> threadNames = new ArrayList<>();
         for (int i = 0; i < controllerCount; i++) {
             String name = "Controller-" + i;
             threadNames.add(name);
-            ControllerThread ct = new ControllerThread(name, this, threadTopology.get(name), incomingThreadTopology.get(name), screen);
+            ControllerThread ct = new ControllerThread(
+                    name, this, threadTopology.get(name), incomingThreadTopology.get(name), screen);
             controllers.add(ct);
             ct.start();
         }
@@ -329,9 +344,9 @@ public class TrafficNode {
             if (canReachAll(node)) {
                 validInitiators.add(node);
             }
-        }       
+        }
         if (!validInitiators.isEmpty()) {
-            designatedInitiator = validInitiators.get((int)(Math.random() * validInitiators.size()));
+            designatedInitiator = validInitiators.get((int) (Math.random() * validInitiators.size()));
             EventQueue.info("Initiator candidates: " + String.join(", ", validInitiators));
             EventQueue.info("Initiator chosen at random: " + designatedInitiator);
         } else {
@@ -339,4 +354,4 @@ public class TrafficNode {
             EventQueue.info("Initiator chosen at random: None");
         }
     }
-}       
+}
