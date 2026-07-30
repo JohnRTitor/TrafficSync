@@ -15,7 +15,9 @@ public class NodeApp {
         int serverPort = config.getInt("SERVER_PORT", 9000);
         int controllers = config.getInt("CONTROLLER_COUNT", 1);
         
-        String menu = "[s] Local Snapshot | [t] Toggle Traffic | [m <id> <msg>] Send Manual Msg | [i <name>] Query ID | [p] List Connected Sites | [c] Clear Logs | [r] Reconnect | [x] Exit";
+        String menu = """
+                      [s] Snapshot | [t] Toggle Traffic | [m <node> <msg>] Send | [i <node>] Info
+                      [p] Peers | [c] Clear | [r] Reconnect | [x] Exit""";
         TerminalScreen screen = new TerminalScreen("Smart Traffic Node: " + nodeName, menu);
         screen.setStatus("Server", serverHost + ":" + serverPort);
         screen.setStatus("Node ID", "PENDING");
@@ -31,43 +33,31 @@ public class NodeApp {
             String[] parts = command.split(" ", 3);
             String cmd = parts[0].toLowerCase();
             switch (cmd) {
-                case "x":
+                case "x" -> {
                     node.stop();
                     screen.stop();
                     System.exit(0);
-                    break;
-
-                case "s":
-                    node.triggerLocalSnapshot();
-                    break;
-                case "t":
-                    node.toggleTrafficGeneration();
-                    break;
-                case "m":
+                }
+                case "s" -> node.triggerLocalSnapshot();
+                case "t" -> node.toggleTrafficGeneration();
+                case "m" -> {
                     if (parts.length >= 3) {
                         node.sendManualMessage(parts[1], parts[2]);
                     } else {
                         EventQueue.warn("Usage: m <nodeId/nodeName/server/vps> <message>");
                     }
-                    break;
-                case "i":
+                }
+                case "i" -> {
                     if (parts.length == 1 || (parts.length >= 2 && parts[1].equalsIgnoreCase("self"))) {
                         node.querySelfNodeId();
                     } else if (parts.length >= 2) {
                         node.queryNodeId(parts[1]);
                     }
-                    break;
-                case "p":
-                    node.printPeers();
-                    break;
-                case "c":
-                    screen.clearLogs();
-                    break;
-                case "r":
-                    node.reconnect();
-                    break;
-                default:
-                    EventQueue.warn("Unknown command: " + command);
+                }
+                case "p" -> node.printPeers();
+                case "c" -> screen.clearLogs();
+                case "r" -> node.reconnect();
+                default -> EventQueue.warn("Unknown command: " + command);
             }
         });
     }

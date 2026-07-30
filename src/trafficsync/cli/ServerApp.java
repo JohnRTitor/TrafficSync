@@ -12,7 +12,9 @@ public class ServerApp {
         
         int tcpPort = config.getInt("SERVER_PORT", 9000);
         
-        String menu = "[s] Snapshot All | [m <node> <msg>] Send Msg | [b <msg>] Broadcast | [c] Clear Logs | [x] Exit";
+        String menu = """
+                      [s] Snapshot All | [m <node> <msg>] Send Msg | [b <msg>] Broadcast
+                      [c] Clear Logs | [x] Exit""";
         TerminalScreen screen = new TerminalScreen("VPS Coordinator Server", menu);
         screen.setStatus("Server IP", "0.0.0.0");
         screen.setStatus("TCP Port", String.valueOf(tcpPort));
@@ -21,7 +23,7 @@ public class ServerApp {
         
         try {
             server.start();
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             EventQueue.error("Server failed to start: " + e.getMessage());
         }
         
@@ -30,35 +32,29 @@ public class ServerApp {
             String[] parts = command.split(" ", 3);
             String cmd = parts[0].toLowerCase();
             switch (cmd) {
-                case "x":
+                case "x" -> {
                     server.stop();
                     screen.stop();
                     System.exit(0);
-                    break;
-
-                case "c":
-                    screen.clearLogs();
-                    break;
-                case "s":
-                    server.triggerGlobalSnapshot();
-                    break;
-                case "m":
+                }
+                case "c" -> screen.clearLogs();
+                case "s" -> server.triggerGlobalSnapshot();
+                case "m" -> {
                     if (parts.length >= 3) {
                         server.sendMessageToNode(parts[1], parts[2]);
                     } else {
                         EventQueue.warn("Usage: m <nodeId> <message>");
                     }
-                    break;
-                case "b":
+                }
+                case "b" -> {
                     String bMsg = command.substring(1).trim();
                     if (!bMsg.isEmpty()) {
                         server.broadcastMessage(bMsg);
                     } else {
                         EventQueue.warn("Usage: b <message>");
                     }
-                    break;
-                default:
-                    EventQueue.warn("Unknown command: " + command);
+                }
+                default -> EventQueue.warn("Unknown command: " + command);
             }
         });
     }
