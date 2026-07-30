@@ -27,14 +27,14 @@ public class LogListBox extends AbstractListBox<Event, LogListBox> {
 
             @Override
             public void drawItem(TextGUIGraphics graphics, LogListBox listBox, int index, Event item, boolean selected, boolean focused) {
-                TextColor color = TextColor.ANSI.DEFAULT;
-                switch (item.getLevel()) {
-                    case ERROR: color = TextColor.ANSI.RED; break;
-                    case WARN: color = TextColor.ANSI.YELLOW; break;
-                    case SNAPSHOT: color = TextColor.ANSI.BLUE; break;
-                    case NETWORK: color = TextColor.ANSI.GREEN; break;
-                    case USER: color = TextColor.ANSI.CYAN; break;
-                }
+                TextColor color = switch (item.getLevel()) {
+                    case ERROR -> TextColor.ANSI.RED;
+                    case WARN -> TextColor.ANSI.YELLOW;
+                    case SNAPSHOT -> TextColor.ANSI.BLUE;
+                    case NETWORK -> TextColor.ANSI.GREEN;
+                    case USER -> TextColor.ANSI.CYAN;
+                    default -> TextColor.ANSI.DEFAULT;
+                };
 
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm:ss");
                 String time = sdf.format(new java.util.Date(item.getTimestamp()));

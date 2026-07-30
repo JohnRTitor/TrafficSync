@@ -95,28 +95,18 @@ public class VpsServer {
 
     private void handleMessage(Message msg, TCPConnection connection) {
         switch (msg.getType()) {
-            case REGISTER:
-                handleRegister(msg, connection);
-                break;
-            case TRAFFIC_UPDATE:
-            case MARKER:
-                relayMessage(msg);
-                break;
-            case MANUAL_MESSAGE:
+            case REGISTER -> handleRegister(msg, connection);
+            case TRAFFIC_UPDATE, MARKER -> relayMessage(msg);
+            case MANUAL_MESSAGE -> {
                 if ("VPS".equals(msg.getReceiverId()) || "server".equalsIgnoreCase(msg.getReceiverId())) {
                     EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
                 } else {
                     relayMessage(msg);
                 }
-                break;
-            case SNAPSHOT_RESPONSE:
-                handleSnapshotResponse(msg);
-                break;
-            case QUERY_NODE_ID:
-                handleQueryNodeId(msg, connection);
-                break;
-            default:
-                EventQueue.warn("Unknown message type: " + msg.getType());
+            }
+            case SNAPSHOT_RESPONSE -> handleSnapshotResponse(msg);
+            case QUERY_NODE_ID -> handleQueryNodeId(msg, connection);
+            default -> EventQueue.warn("Unknown message type: " + msg.getType());
         }
     }
 

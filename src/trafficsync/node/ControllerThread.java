@@ -71,18 +71,13 @@ public class ControllerThread extends Thread {
     
     private void handleMessage(Message msg) {
         switch (msg.getType()) {
-            case START_SNAPSHOT:
-                snapshotManager.initiateSnapshot(msg.getSnapshotId());
-                break;
-            case MARKER:
-                snapshotManager.handleMarker(msg);
-                break;
-            case TRAFFIC_UPDATE:
+            case START_SNAPSHOT -> snapshotManager.initiateSnapshot(msg.getSnapshotId());
+            case MARKER -> snapshotManager.handleMarker(msg);
+            case TRAFFIC_UPDATE -> {
                 EventQueue.info(name + " received " + msg.getType() + " from " + msg.getSenderId() + ": " + msg.getPayload());
                 snapshotManager.recordIncomingMessage(msg);
-                break;
-            default:
-                break;
+            }
+            default -> {}
         }
     }
 
