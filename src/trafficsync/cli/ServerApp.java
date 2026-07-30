@@ -3,8 +3,6 @@ package trafficsync.cli;
 import trafficsync.config.EnvReader;
 import trafficsync.server.VpsServer;
 import trafficsync.terminal.EventQueue;
-import trafficsync.terminal.KeyboardInput;
-import trafficsync.terminal.TerminalRenderer;
 import trafficsync.terminal.TerminalScreen;
 
 public class ServerApp {
@@ -14,13 +12,10 @@ public class ServerApp {
         
         int tcpPort = config.getInt("SERVER_PORT", 9000);
         
-        String menu = "[s] Snapshot All | [m <node> <msg>] Send Msg | [b <msg>] Broadcast | [r] Refresh | [c] Clear Logs | [x] Exit";
+        String menu = "[s] Snapshot All | [m <node> <msg>] Send Msg | [b <msg>] Broadcast | [c] Clear Logs | [x] Exit";
         TerminalScreen screen = new TerminalScreen("VPS Coordinator Server", menu);
         screen.setStatus("Server IP", "0.0.0.0");
         screen.setStatus("TCP Port", String.valueOf(tcpPort));
-        
-        TerminalRenderer renderer = new TerminalRenderer(screen);
-        renderer.start();
         
         VpsServer server = new VpsServer(tcpPort, screen);
         
@@ -30,14 +25,14 @@ public class ServerApp {
             EventQueue.error("Server failed to start: " + e.getMessage());
         }
         
-        KeyboardInput input = new KeyboardInput(screen, command -> {
+        screen.start(command -> {
             screen.setPromptInput(command);
             String[] parts = command.split(" ", 3);
             String cmd = parts[0].toLowerCase();
             switch (cmd) {
                 case "x":
                     server.stop();
-                    renderer.stop();
+                    screen.stop();
                     System.exit(0);
                     break;
 
@@ -62,20 +57,9 @@ public class ServerApp {
                         EventQueue.warn("Usage: b <message>");
                     }
                     break;
-                case "r":
-                    // Redraw triggers naturally
-                    break;
                 default:
                     EventQueue.warn("Unknown command: " + command);
             }
         });
-        input.start();
-        
-        // Block main thread
-        try {
-            Thread.currentThread().join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 }

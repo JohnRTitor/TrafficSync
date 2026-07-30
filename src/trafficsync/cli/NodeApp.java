@@ -3,8 +3,6 @@ package trafficsync.cli;
 import trafficsync.config.EnvReader;
 import trafficsync.node.TrafficNode;
 import trafficsync.terminal.EventQueue;
-import trafficsync.terminal.KeyboardInput;
-import trafficsync.terminal.TerminalRenderer;
 import trafficsync.terminal.TerminalScreen;
 
 public class NodeApp {
@@ -25,20 +23,17 @@ public class NodeApp {
         screen.setStatus("Peers", "0");
         screen.setStatus("Connection", "DISCONNECTED");
         
-        TerminalRenderer renderer = new TerminalRenderer(screen);
-        renderer.start();
-        
         TrafficNode node = new TrafficNode(nodeName, serverHost, serverPort, controllers, screen);
         node.start();
         
-        KeyboardInput input = new KeyboardInput(screen, command -> {
+        screen.start(command -> {
             screen.setPromptInput(command);
             String[] parts = command.split(" ", 3);
             String cmd = parts[0].toLowerCase();
             switch (cmd) {
                 case "x":
                     node.stop();
-                    renderer.stop();
+                    screen.stop();
                     System.exit(0);
                     break;
 
@@ -75,12 +70,5 @@ public class NodeApp {
                     EventQueue.warn("Unknown command: " + command);
             }
         });
-        input.start();
-        
-        try {
-            Thread.currentThread().join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 }

@@ -1,37 +1,46 @@
 package trafficsync.terminal;
 
+import com.googlecode.lanterna.TerminalSize;
+import com.googlecode.lanterna.TextColor;
+import com.googlecode.lanterna.gui2.*;
+import com.googlecode.lanterna.gui2.Borders;
+import com.googlecode.lanterna.graphics.SimpleTheme;
+import com.googlecode.lanterna.screen.Screen;
+import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
+import com.googlecode.lanterna.input.KeyStroke;
+import com.googlecode.lanterna.input.KeyType;
+import com.googlecode.lanterna.SGR;
+
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.LinkedHashMap;
+import java.util.function.Consumer;
+import java.util.Arrays;
 
 public class TerminalScreen {
-    
-    public static class Task {
-        public final String id;
-        public final String title;
-        public double progress;
-        public String status;
-        public final Runnable onCancel;
 
-        public Task(String id, String title, double progress, String status, Runnable onCancel) {
-            this.id = id;
-            this.title = title;
-            this.progress = progress;
-            this.status = status;
-            this.onCancel = onCancel;
-        }
-    }
+
 
     private final String title;
-    private final Map<String, String> statusFields = new ConcurrentHashMap<>();
-    private final LinkedList<Event> logs = new LinkedList<>();
-    private final int MAX_LOGS = 15;
-    
-    private final Map<String, Task> activeTasks = new LinkedHashMap<>();
-    private volatile String promptInput = "";
-    
     private final String menu;
+    private final Map<String, String> statusFields = new ConcurrentHashMap<>();
+    private final Map<String, Task> activeTasks = new LinkedHashMap<>();
+    private final LinkedList<Event> logs = new LinkedList<>();
+    private final int MAX_LOGS = 1000;
+    private volatile boolean running = false;
+    
+    private Screen screen;
+    private MultiWindowTextGUI gui;
+    private Panel statusPanel;
+    private Panel tasksPanel;
+    private LogListBox logListBox;
+    private TextBox commandInput;
+
+
 
     public TerminalScreen(String title, String menu) {
         this.title = title;
@@ -40,10 +49,12 @@ public class TerminalScreen {
 
     public void setStatus(String key, String value) {
         statusFields.put(key, value);
+        updateStatusPanel();
     }
 
     public synchronized void addTask(Task task) {
         activeTasks.put(task.id, task);
+        updateTasksPanel();
     }
 
     public synchronized void updateTask(String id, double progress, String status) {
@@ -51,17 +62,19 @@ public class TerminalScreen {
         if (t != null) {
             t.progress = progress;
             t.status = status;
+            updateTasksPanel();
         }
     }
 
     public synchronized void removeTask(String id) {
         activeTasks.remove(id);
+        updateTasksPanel();
     }
 
-
-    
     public void setPromptInput(String input) {
-        this.promptInput = input;
+        if (commandInput != null && gui != null) {
+            gui.getGUIThread().invokeLater(() -> commandInput.setText(input));
+        }
     }
 
     public synchronized void addLog(Event event) {
@@ -69,90 +82,156 @@ public class TerminalScreen {
         if (logs.size() > MAX_LOGS) {
             logs.removeFirst();
         }
+        updateLogPanel();
     }
     
     public synchronized void clearLogs() {
         logs.clear();
+        updateLogPanel();
+    }
+    
+    private void updateStatusPanel() {
+        if (gui == null || statusPanel == null) return;
+        gui.getGUIThread().invokeLater(() -> {
+            statusPanel.removeAllComponents();
+            for (Map.Entry<String, String> entry : statusFields.entrySet()) {
+                statusPanel.addComponent(new Label(entry.getKey() + " :").setForegroundColor(TextColor.ANSI.CYAN));
+                statusPanel.addComponent(new Label(entry.getValue()));
+            }
+        });
     }
 
-    public synchronized String render() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(Ansi.CURSOR_HOME);
+    private synchronized void updateTasksPanel() {
+        if (gui == null || tasksPanel == null) return;
         
-        // Header
-        sb.append(Ansi.CYAN).append("=====================================================================").append(Ansi.CLEAR_LINE).append("\n");
-        sb.append(" ").append(title).append(Ansi.CLEAR_LINE).append("\n");
-        sb.append("=====================================================================").append(Ansi.RESET).append(Ansi.CLEAR_LINE).append("\n");
+        List<Task> currentTasks = new ArrayList<>(activeTasks.values());
         
-        // Status
-        for (Map.Entry<String, String> entry : statusFields.entrySet()) {
-            sb.append(Ansi.BOLD).append(String.format("%-15s", entry.getKey() + " : ")).append(Ansi.RESET)
-              .append(entry.getValue()).append(Ansi.CLEAR_LINE).append("\n");
-        }
-        
-        sb.append(Ansi.CYAN).append("---------------------------------------------------------------------").append(Ansi.CLEAR_LINE).append("\n").append(Ansi.RESET);
-        sb.append(menu).append(Ansi.CLEAR_LINE).append("\n");
-        sb.append(Ansi.CYAN).append("---------------------------------------------------------------------").append(Ansi.CLEAR_LINE).append("\n").append(Ansi.RESET);
-        
-        // Active Tasks
-        sb.append("Active Tasks:").append(Ansi.CLEAR_LINE).append("\n");
-        if (activeTasks.isEmpty()) {
-            sb.append("Idle").append(Ansi.CLEAR_LINE).append("\n");
-            sb.append(Ansi.CLEAR_LINE).append("\n");
-        } else {
-            for (Task t : activeTasks.values()) {
-                sb.append("[").append(t.id).append("] ").append(t.title).append(Ansi.CLEAR_LINE).append("\n");
-                if (t.progress >= 0) {
-                    int totalBars = 20;
-                    int filled = (int) (t.progress * totalBars);
-                    sb.append("  [");
-                    for (int i = 0; i < totalBars; i++) {
-                        sb.append(i < filled ? "=" : (i == filled ? ">" : "."));
+        gui.getGUIThread().invokeLater(() -> {
+            tasksPanel.removeAllComponents();
+            if (currentTasks.isEmpty()) {
+                tasksPanel.addComponent(new Label("Idle").setForegroundColor(TextColor.ANSI.DEFAULT));
+            } else {
+                for (Task t : currentTasks) {
+                    tasksPanel.addComponent(new Label("[" + t.id + "] " + t.title));
+                    if (t.progress >= 0) {
+                        int totalBars = 20;
+                        int filled = (int) (t.progress * totalBars);
+                        StringBuilder bar = new StringBuilder("  [");
+                        for (int i = 0; i < totalBars; i++) {
+                            bar.append(i < filled ? "=" : (i == filled ? ">" : "."));
+                        }
+                        bar.append("] ").append(String.format("%d%%", (int)(t.progress * 100)));
+                        tasksPanel.addComponent(new Label(bar.toString()).setForegroundColor(TextColor.ANSI.YELLOW));
                     }
-                    sb.append("] ").append(String.format("%d%%", (int)(t.progress * 100))).append(Ansi.CLEAR_LINE).append("\n");
-                    sb.append("  ").append(t.status).append(Ansi.CLEAR_LINE).append("\n");
-                } else {
-                    sb.append("  ").append(t.status).append(Ansi.CLEAR_LINE).append("\n");
+                    tasksPanel.addComponent(new Label("  " + t.status));
                 }
             }
-        }
-        
-        sb.append(Ansi.CYAN).append("---------------------------------------------------------------------").append(Ansi.CLEAR_LINE).append("\n").append(Ansi.RESET);
-        sb.append("Live Event Log").append(Ansi.CLEAR_LINE).append("\n");
-        sb.append(Ansi.CYAN).append("---------------------------------------------------------------------").append(Ansi.CLEAR_LINE).append("\n").append(Ansi.RESET);
-        
-        // Logs
-        for (Event e : logs) {
-            String color = Ansi.RESET;
-            switch (e.getLevel()) {
-                case ERROR: color = Ansi.RED; break;
-                case WARN: color = Ansi.YELLOW; break;
-                case SNAPSHOT: color = Ansi.BLUE; break;
-                case NETWORK: color = Ansi.GREEN; break;
-                case USER: color = Ansi.CYAN; break;
-                case INFO: color = Ansi.RESET; break;
-                default: break;
-            }
-            // Format time
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm:ss");
-            String time = sdf.format(new java.util.Date(e.getTimestamp()));
-            
-            String levelText = String.format("%-8s", "[" + e.getLevel() + "]");
-            
-            sb.append(color).append(time).append(" ").append(levelText).append(" ")
-              .append(e.getMessage()).append(Ansi.RESET).append(Ansi.CLEAR_LINE).append("\n");
-        }
-        
-        // Fill empty lines to keep height constant (simplified for dynamic tasks)
-        // Adjust this if UI jumps too much, but dynamic task lists naturally change height.
-        int requiredPadding = MAX_LOGS - logs.size();
-        for (int i = 0; i < requiredPadding; i++) {
-            sb.append(Ansi.CLEAR_LINE).append("\n");
-        }
-        
-        sb.append(Ansi.CYAN).append("---------------------------------------------------------------------").append(Ansi.CLEAR_LINE).append("\n").append(Ansi.RESET);
-        sb.append("> ").append(promptInput).append(Ansi.CLEAR_LINE); // Clear rest of line to avoid artifacting
+        });
+    }
 
-        return sb.toString();
+    private synchronized void updateLogPanel() {
+        if (gui == null || logListBox == null) return;
+        
+        List<Event> currentLogs = new ArrayList<>(logs);
+        gui.getGUIThread().invokeLater(() -> {
+            logListBox.clearItems();
+            for (Event e : currentLogs) {
+                logListBox.addItem(e);
+            }
+            
+            // Auto-scroll to bottom
+            if (logListBox.getItemCount() > 0) {
+                logListBox.setSelectedIndex(logListBox.getItemCount() - 1);
+            }
+        });
+    }
+
+    public void start(Consumer<String> onCommand) {
+        try {
+            DefaultTerminalFactory factory = new DefaultTerminalFactory();
+            factory.setPreferTerminalEmulator(false);
+            factory.setForceTextTerminal(true);
+            screen = factory.createScreen();
+            screen.startScreen();
+            running = true;
+
+            Panel mainPanel = new Panel(new LinearLayout(Direction.VERTICAL));
+            
+            statusPanel = new Panel(new GridLayout(2));
+            mainPanel.addComponent(statusPanel.withBorder(Borders.singleLine(title)));
+            updateStatusPanel();
+
+            Panel menuPanel = new Panel(new LinearLayout(Direction.VERTICAL));
+            menuPanel.addComponent(new Label(menu).setForegroundColor(TextColor.ANSI.WHITE));
+            mainPanel.addComponent(menuPanel.withBorder(Borders.singleLine("Commands")));
+
+            tasksPanel = new Panel(new LinearLayout(Direction.VERTICAL));
+            mainPanel.addComponent(tasksPanel.withBorder(Borders.singleLine("Active Tasks")));
+            updateTasksPanel();
+
+            logListBox = new LogListBox(new TerminalSize(80, 15));
+            mainPanel.addComponent(logListBox.withBorder(Borders.singleLine("Live Event Log")));
+
+            commandInput = new TextBox(new TerminalSize(50, 1)) {
+                @Override
+                public Result handleKeyStroke(KeyStroke keyStroke) {
+                    if (keyStroke.getKeyType() == KeyType.Enter) {
+                        String cmd = getText().trim();
+                        if (!cmd.isEmpty()) {
+                            setText("");
+                            onCommand.accept(cmd);
+                        }
+                        return Result.HANDLED;
+                    }
+                    return super.handleKeyStroke(keyStroke);
+                }
+            };
+            
+            Panel inputPanel = new Panel(new LinearLayout(Direction.HORIZONTAL));
+            inputPanel.addComponent(new Label("> ").setForegroundColor(TextColor.ANSI.CYAN));
+            inputPanel.addComponent(commandInput);
+            mainPanel.addComponent(inputPanel.withBorder(Borders.singleLine("Input")));
+
+            BasicWindow window = new BasicWindow();
+            window.setTheme(new SimpleTheme(TextColor.ANSI.DEFAULT, TextColor.ANSI.DEFAULT));
+            window.setHints(Arrays.asList(Window.Hint.FULL_SCREEN, Window.Hint.NO_DECORATIONS));
+            window.setComponent(mainPanel);
+
+            gui = new MultiWindowTextGUI(screen, new DefaultWindowManager(), new EmptySpace(TextColor.ANSI.DEFAULT));
+            
+            Thread eventThread = new Thread(() -> {
+                while (running) {
+                    Event e = EventQueue.poll();
+                    if (e != null) {
+                        addLog(e);
+                    } else {
+                        try {
+                            Thread.sleep(50);
+                        } catch (InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                }
+            });
+            eventThread.setDaemon(true);
+            eventThread.start();
+
+            gui.addWindowAndWait(window);
+            
+            running = false;
+            eventThread.interrupt();
+            screen.stopScreen();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void stop() {
+        running = false;
+        if (gui != null && gui.getActiveWindow() != null) {
+            gui.getActiveWindow().close();
+        }
     }
 }

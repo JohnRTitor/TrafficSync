@@ -4,4 +4,4 @@ if [ -z "$1" ]; then
   exit 1
 fi
 cd "$(dirname "$0")/.."
-java -cp out trafficsync.cli.NodeApp $1
+java -cp "out:lib/*" trafficsync.cli.NodeApp $1

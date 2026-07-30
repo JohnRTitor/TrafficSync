@@ -5,7 +5,7 @@ import trafficsync.common.MessageType;
 import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
-import trafficsync.terminal.TerminalScreen.Task;
+import trafficsync.terminal.Task;
 import trafficsync.transport.NodeCommunicator;
 
 import java.io.IOException;

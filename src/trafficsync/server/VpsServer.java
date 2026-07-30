@@ -4,6 +4,7 @@ import trafficsync.common.Message;
 import trafficsync.common.MessageType;
 import trafficsync.terminal.Event;
 import trafficsync.terminal.EventQueue;
+import trafficsync.terminal.Task;
 import trafficsync.terminal.TerminalScreen;
 import trafficsync.transport.TCPConnection;
 import trafficsync.transport.TCPServer;
@@ -220,7 +221,7 @@ public class VpsServer {
             snapshotStates.clear();
             currentSnapshotId = null;
         };
-        screen.addTask(new TerminalScreen.Task(snapId, "Global Snapshot", 0.0, "Waiting for node responses...", onCancel));
+        screen.addTask(new Task(snapId, "Global Snapshot", 0.0, "Waiting for node responses...", onCancel));
         
         for (String nodeId : registry.getNodes()) {
             TCPConnection conn = registry.getConnection(nodeId);
