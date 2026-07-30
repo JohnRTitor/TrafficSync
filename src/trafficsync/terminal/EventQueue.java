@@ -4,8 +4,10 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class EventQueue {
+    // Shared non-blocking event channel between background work and the terminal UI.
     private static final BlockingQueue<Event> queue = new LinkedBlockingQueue<>();
     
+    // Convenience logging methods for the application's event categories.
     public static void push(Event.Level level, String message) {
         queue.offer(new Event(level, message));
     }

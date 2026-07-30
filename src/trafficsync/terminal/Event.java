@@ -1,8 +1,10 @@
 package trafficsync.terminal;
 
 public class Event {
+    // Log severity categories used by the terminal renderer.
     public enum Level { INFO, WARN, ERROR, SNAPSHOT, NETWORK, USER }
     
+    // Immutable event details captured at the time of logging.
     private final Level level;
     private final String message;
     private final long timestamp;

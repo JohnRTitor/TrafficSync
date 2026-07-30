@@ -10,8 +10,10 @@ import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
 
 public class LogListBox extends AbstractListBox<Event, LogListBox> {
+    // Horizontal offset for viewing long log messages.
     private int horizontalScroll = 0;
 
+    // Render timestamped, color-coded events in the terminal list.
     public LogListBox(TerminalSize preferredSize) {
         super(preferredSize);
         setListItemRenderer(new ListItemRenderer<Event, LogListBox>() {
@@ -71,6 +73,7 @@ public class LogListBox extends AbstractListBox<Event, LogListBox> {
         });
     }
 
+    // Keyboard-driven horizontal scrolling support.
     public int getHorizontalScroll() {
         return horizontalScroll;
     }

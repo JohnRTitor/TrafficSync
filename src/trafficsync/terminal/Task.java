@@ -1,6 +1,7 @@
 package trafficsync.terminal;
 
 public class Task {
+    // Mutable task state displayed in the terminal's active-task panel.
     public final String id;
     public final String title;
     public double progress;

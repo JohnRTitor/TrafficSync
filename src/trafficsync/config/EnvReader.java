@@ -8,8 +8,10 @@ import java.util.List;
 import java.util.Map;
 
 public class EnvReader {
+    // In-memory key/value configuration loaded from a .env-style file.
     private final Map<String, String> envVars = new HashMap<>();
 
+    // Parse non-empty, non-comment KEY=VALUE lines; callers can safely use defaults on failure.
     public EnvReader(String filePath) {
         try {
             List<String> lines = Files.readAllLines(Paths.get(filePath));
@@ -30,6 +32,7 @@ public class EnvReader {
         }
     }
 
+    // Typed configuration access with caller-supplied fallback values.
     public String get(String key, String defaultValue) {
         return envVars.getOrDefault(key, defaultValue);
     }

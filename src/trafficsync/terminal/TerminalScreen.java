@@ -10,7 +10,6 @@ import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
 import com.googlecode.lanterna.SGR;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -23,8 +22,6 @@ import java.util.Arrays;
 
 public class TerminalScreen {
 
-
-
     private final String title;
     private final String menu;
     private final Map<String, String> statusFields = new ConcurrentHashMap<>();
@@ -32,15 +29,12 @@ public class TerminalScreen {
     private final LinkedList<Event> logs = new LinkedList<>();
     private final int MAX_LOGS = 1000;
     private volatile boolean running = false;
-    
     private Screen screen;
     private MultiWindowTextGUI gui;
     private Panel statusPanel;
     private Panel tasksPanel;
     private LogListBox logListBox;
     private TextBox commandInput;
-
-
 
     public TerminalScreen(String title, String menu) {
         this.title = title;

@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class VpsServer {
+    // Coordinator transport, registry, and terminal UI state.
     private final int port;
     private final TerminalScreen screen;
     private TCPServer tcpServer;
@@ -27,11 +28,13 @@ public class VpsServer {
     private final ConcurrentHashMap<String, String> snapshotStates = new ConcurrentHashMap<>();
     private String currentSnapshotId = null;
 
+    // Configure the coordinator before it begins accepting nodes.
     public VpsServer(int port, TerminalScreen screen) {
         this.port = port;
         this.screen = screen;
     }
 
+    // Server lifecycle operations.
     public void start() throws IOException {
         tcpServer = new TCPServer(port, this::handleNewConnection);
         tcpServer.start();
@@ -62,6 +65,7 @@ public class VpsServer {
         screen.setStatus("Registered Nodes", String.valueOf(registry.getNodes().size()));
     }
 
+    // Accept and identify newly connected traffic nodes.
     private void handleNewConnection(Socket socket) {
         try {
             EventQueue.info("New connection from " + socket.getRemoteSocketAddress());

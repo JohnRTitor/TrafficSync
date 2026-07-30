@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class NodeRegistry {
+    // Thread-safe mapping of active node IDs, names, and TCP connections.
     // node id -> Connection
     private final ConcurrentMap<String, TCPConnection> nodeConnections = new ConcurrentHashMap<>();
     
@@ -15,6 +16,7 @@ public class NodeRegistry {
     
     private final AtomicInteger idCounter = new AtomicInteger(1);
 
+    // Registration lifecycle operations.
     public String generateNodeId() {
         return "NODE-" + idCounter.getAndIncrement();
     }
@@ -29,6 +31,7 @@ public class NodeRegistry {
         nodeNames.remove(nodeId);
     }
 
+    // Node lookup and name-resolution helpers for the coordinator.
     public TCPConnection getConnection(String nodeId) {
         return nodeConnections.get(nodeId);
     }

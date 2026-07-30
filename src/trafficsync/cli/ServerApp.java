@@ -6,7 +6,9 @@ import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
 
 public class ServerApp {
+    // Application entry point that hosts the VPS coordinator and its terminal UI.
     public static void main(String[] args) {
+        // Load the coordinator port from the optional environment file.
         String envPath = args.length > 0 ? args[0] : ".env";
         EnvReader config = new EnvReader(envPath);
         
@@ -15,6 +17,7 @@ public class ServerApp {
         String menu = """
                       [s] Snapshot All | [m <node> <msg>] Send Msg | [b <msg>] Broadcast
                       [c] Clear Logs | [x] Exit""";
+        // Build the terminal dashboard before accepting node connections.
         TerminalScreen screen = new TerminalScreen("VPS Coordinator Server", menu);
         screen.setStatus("Server IP", "0.0.0.0");
         screen.setStatus("TCP Port", String.valueOf(tcpPort));
@@ -27,6 +30,7 @@ public class ServerApp {
             EventQueue.error("Server failed to start: " + e.getMessage());
         }
         
+        // Route interactive commands to the coordinator.
         screen.start(command -> {
             screen.setPromptInput(command);
             String[] parts = command.split(" ", 3);
