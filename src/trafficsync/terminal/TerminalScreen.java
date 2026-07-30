@@ -149,9 +149,15 @@ public class TerminalScreen {
     public void start(Consumer<String> onCommand) {
         try {
             DefaultTerminalFactory factory = new DefaultTerminalFactory();
-            factory.setPreferTerminalEmulator(false);
-            factory.setForceTextTerminal(true);
-            screen = factory.createScreen();
+            try {
+                factory.setPreferTerminalEmulator(false);
+                factory.setForceTextTerminal(true);
+                screen = factory.createScreen();
+            } catch (IOException e) {
+                // Fallback for Windows environments (like IDE consoles or mintty) that lack stty
+                factory = new DefaultTerminalFactory();
+                screen = factory.createScreen(); // Let Lanterna auto-detect
+            }
             screen.startScreen();
             running = true;
 

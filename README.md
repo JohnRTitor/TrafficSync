@@ -65,24 +65,22 @@ cp node.env.example node1.env
 ./scripts/build.sh
 ```
 
-**Windows (PowerShell):**
-```powershell
-# Create the output directory if it doesn't exist
-New-Item -ItemType Directory -Force -Path out | Out-Null
-
-# Compile all Java files under src
-javac -d out (Get-ChildItem -Recurse -Filter *.java src | ForEach-Object { $_.FullName })
+**Windows (Command Prompt / PowerShell):**
+```cmd
+scripts\build.bat
 ```
 
 ### 2. Start the VPS Server
 Open a new terminal and run:
+
+**Linux/macOS:**
 ```bash
 ./scripts/run_server.sh
 ```
-OR 
-```bash
-java -cp out trafficsync.cli.ServerApp server.env
 
+**Windows (Command Prompt / PowerShell):**
+```cmd
+scripts\run_server.bat
 ```
 
 ### 3. Start the Nodes
@@ -97,23 +95,22 @@ Open 5 new terminals, and in each run one of the following:
 ./scripts/run_node.sh node5.env
 ```
 
-**Windows (PowerShell):**
-```powershell
-java -cp out trafficsync.cli.NodeApp node1.env
-java -cp out trafficsync.cli.NodeApp node2.env
-java -cp out trafficsync.cli.NodeApp node3.env
-java -cp out trafficsync.cli.NodeApp node4.env
-java -cp out trafficsync.cli.NodeApp node5.env
+**Windows (Command Prompt / PowerShell):**
+```cmd
+scripts\run_node.bat node1.env
+scripts\run_node.bat node2.env
+scripts\run_node.bat node3.env
+scripts\run_node.bat node4.env
+scripts\run_node.bat node5.env
 ```
 
 ### 4. Interactive Terminal UI
-Each instance opens an interactive dashboard rendered with ANSI sequences. 
+Each instance opens a fully featured Text User Interface (TUI) powered by the **Lanterna** library, which supports native windowing, horizontal scrolling, and dynamic layout.
 
 #### Server (VPS) Commands:
 - `s + Enter`: Trigger a global snapshot across all connected sites.
 - `m <nodeId> <msg> + Enter`: Manually send a message to a specific node.
 - `b <msg> + Enter`: Broadcast a message to all connected nodes.
-- `r + Enter`: Refresh the screen.
 - `c + Enter`: Clear the event logs.
 - `x + Enter`: Gracefully exit the server.
 
