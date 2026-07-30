@@ -156,7 +156,9 @@ public class TerminalScreen {
             } catch (IOException e) {
                 // Fallback for Windows environments (like IDE consoles or mintty) that lack stty
                 factory = new DefaultTerminalFactory();
-                screen = factory.createScreen(); // Let Lanterna auto-detect
+                factory.setForceTextTerminal(false);
+                factory.setPreferTerminalEmulator(true);
+                screen = factory.createScreen(); // Force Swing terminal
             }
             screen.startScreen();
             running = true;
