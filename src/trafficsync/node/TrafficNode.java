@@ -139,7 +139,7 @@ public class TrafficNode {
     // Handle messages
     private void handleMessage(Message msg) {
         switch (msg.getType()) {
-            case REGISTER_ACK:
+            case REGISTER_ACK -> {
                 this.nodeId = (String) msg.getPayload();
                 communicator.setNodeId(this.nodeId);
                 registered = true;
@@ -147,21 +147,12 @@ public class TrafficNode {
                 screen.setStatus("Connection", "CONNECTED");
                 screen.setStatus("Node ID", this.nodeId);
                 startControllers();
-                break;
-            case PEER_LIST:
-                updatePeers((String) msg.getPayload());
-                break;
-            case SNAPSHOT_TRIGGER:
-                handleSnapshotTrigger(msg);
-                break;
-            case QUERY_NODE_ID_RESPONSE:
-                EventQueue.info("Query Result: " + msg.getPayload());
-                break;
-            case MANUAL_MESSAGE:
-                EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
-                break;
-            default:
-                EventQueue.warn("Unhandled message type: " + msg.getType());
+            }
+            case PEER_LIST -> updatePeers((String) msg.getPayload());
+            case SNAPSHOT_TRIGGER -> handleSnapshotTrigger(msg);
+            case QUERY_NODE_ID_RESPONSE -> EventQueue.info("Query Result: " + msg.getPayload());
+            case MANUAL_MESSAGE -> EventQueue.push(Event.Level.USER, "Message from " + msg.getSenderId() + ": " + msg.getPayload());
+            default -> EventQueue.warn("Unhandled message type: " + msg.getType());
         }
     }
     // Handle snapshot
