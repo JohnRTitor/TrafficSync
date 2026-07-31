@@ -36,6 +36,10 @@ public class EventQueue {
         push(Event.Level.SNAPSHOT, message);
     }
 
+    // This is the consumer side. The TerminalScreen's background event thread calls this
+    // method in a loop to pull events off the queue and display them in the log panel.
+    // poll() returns null immediately if the queue is empty, so the caller sleeps briefly
+    // before trying again to avoid spinning the CPU.
     public static Event poll() {
         return queue.poll();
     }

@@ -41,6 +41,9 @@ public class EnvReader {
         return envVars.getOrDefault(key, defaultValue);
     }
 
+    // Same idea as get() but for integer settings like port numbers.
+    // If the value in the file is not a valid number (e.g. someone accidentally typed letters),
+    // we catch the NumberFormatException and return the safe default instead of crashing.
     public int getInt(String key, int defaultValue) {
         String val = envVars.get(key);
         if (val == null) return defaultValue;

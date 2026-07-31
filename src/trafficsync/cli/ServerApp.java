@@ -5,8 +5,10 @@ import trafficsync.server.VpsServer;
 import trafficsync.terminal.EventQueue;
 import trafficsync.terminal.TerminalScreen;
 
-// This is the main class that starts the central server for our traffic network.
-// It hosts the VPS coordinator and displays a terminal interface so we can monitor all sites.
+// This is the main entry point for the VPS (central coordinator) side of our traffic network.
+// It ties together three major components: the EnvReader for configuration, the VpsServer
+// for handling all node connections and message routing, and the TerminalScreen for the
+// interactive dashboard. The flow is: read config -> build UI -> start TCP listener -> handle user commands.
 public class ServerApp {
 
     // The main method starts the server. It reads the port number from a file,
@@ -42,19 +44,24 @@ public class ServerApp {
             EventQueue.error("Server failed to start: " + e.getMessage());
         }
 
-        // We set up a callback function that handles any commands the user types into the terminal.
-        // This allows us to interact with the server while it is running in the background.
+        // At this point the server is running and accepting connections in the background.
+        // We now hand control to the terminal UI, which blocks on this thread and waits for user input.
+        // The lambda below acts as a command dispatcher -- every keystroke-enter pair from the user
+        // arrives here as a string, and we figure out which server action to invoke.
         screen.start(command -> {
             screen.setPromptInput(command);
             String[] parts = command.split(" ", 3);
             String cmd = parts[0].toLowerCase();
             switch (cmd) {
+                // Graceful shutdown: stop accepting new connections, close all sockets, then kill the UI.
                 case "x" -> {
                     server.stop();
                     screen.stop();
                     System.exit(0);
                 }
                 case "c" -> screen.clearLogs();
+                // The 's' command kicks off the Chandy-Lamport global snapshot across all connected sites.
+                // The VpsServer sends SNAPSHOT_TRIGGER to every node and waits for their responses.
                 case "s" -> server.triggerGlobalSnapshot();
                 case "m" -> {
                     if (parts.length >= 3) {
@@ -63,6 +70,8 @@ public class ServerApp {
                         EventQueue.warn("Usage: m <nodeId> <message>");
                     }
                 }
+                // Broadcast sends the same message to every connected node at once.
+                // We strip the 'b' prefix and use the rest of the input as the message body.
                 case "b" -> {
                     String bMsg = command.substring(1).trim();
                     if (!bMsg.isEmpty()) {

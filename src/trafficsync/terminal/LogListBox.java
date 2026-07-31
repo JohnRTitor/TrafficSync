@@ -9,16 +9,23 @@ import com.googlecode.lanterna.gui2.TextGUIGraphics;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
 
-// This is a custom UI component for the Lanterna library.
-// It displays our list of events and allows the user to scroll sideways if a log message is too long.
+// This is a custom UI component built on top of Lanterna's AbstractListBox.
+// The standard list box only supports plain text, so we extend it to support
+// color-coded log entries, timestamps, and horizontal scrolling. The rendering
+// logic is entirely custom -- each row is drawn with a color that matches the
+// event's severity level (e.g., red for errors, blue for snapshots).
 public class LogListBox extends AbstractListBox<Event, LogListBox> {
     // We keep track of how far the user has scrolled to the right.
+    // This is needed because long messages might not fit on a single terminal line.
     private int horizontalScroll = 0;
 
     // We override the default drawing method so we can add colors and timestamps.
     public LogListBox(TerminalSize preferredSize) {
         super(preferredSize);
         setListItemRenderer(new ListItemRenderer<Event, LogListBox>() {
+            // Returning -1 disables the hotspot cursor for list items.
+            // We do not need a cursor indicator because we use reverse-video
+            // highlighting for the selected row instead.
             @Override
             public int getHotSpotPositionOnLine(int index) {
                 return -1;
@@ -48,6 +55,8 @@ public class LogListBox extends AbstractListBox<Event, LogListBox> {
                             default -> TextColor.ANSI.DEFAULT;
                         };
 
+                // Build the full log line: timestamp + severity tag + message text.
+                // The level text is padded to 8 characters so all the messages line up neatly.
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm:ss");
                 String time = sdf.format(new java.util.Date(item.getTimestamp()));
                 String levelText = String.format("%-8s", "[" + item.getLevel() + "]");
@@ -72,6 +81,9 @@ public class LogListBox extends AbstractListBox<Event, LogListBox> {
                     graphics.enableModifiers(SGR.REVERSE);
                 }
 
+                // Pad the text to fill the entire terminal width, then truncate if it is
+                // still too long. This prevents leftover characters from a previous draw
+                // from showing through when a shorter line replaces a longer one.
                 String padded = String.format("%-" + graphics.getSize().getColumns() + "s", textToDraw);
                 if (padded.length() > graphics.getSize().getColumns()) {
                     padded = padded.substring(0, graphics.getSize().getColumns());
@@ -85,11 +97,15 @@ public class LogListBox extends AbstractListBox<Event, LogListBox> {
         });
     }
 
-    // We listen for the left and right arrow keys and update the scroll offset.
-    // Calling invalidate() tells the library to redraw the component.
+    // Returns the current horizontal scroll offset.
+    // The renderer reads this value during drawItem to decide how much text to skip.
     public int getHorizontalScroll() {
         return horizontalScroll;
     }
+
+    // We listen for the left and right arrow keys and shift the scroll offset by 5 columns.
+    // Calling invalidate() tells Lanterna that the component content has changed
+    // and needs to be redrawn on the next rendering pass.
 
     @Override
     public Interactable.Result handleKeyStroke(KeyStroke keyStroke) {

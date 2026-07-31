@@ -9,7 +9,10 @@ import java.net.Socket;
 import java.util.function.Consumer;
 
 // This class represents a single active socket connection between a client and a server.
-// It uses Java's built-in ObjectInputStream and ObjectOutputStream so we can send our Message objects directly.
+// It uses Java's built-in ObjectInputStream and ObjectOutputStream so we can send our Message
+// objects directly over the wire without manual serialization. Each TCPConnection spawns its
+// own background listener thread, which means the application can send and receive data at
+// the same time on the same socket without blocking.
 public class TCPConnection {
     private final Socket socket;
     private final ObjectOutputStream out;
@@ -17,6 +20,9 @@ public class TCPConnection {
     private final Consumer<Message> onMessageReceived;
     private final Consumer<TCPConnection> onDisconnected;
     private Thread listenerThread;
+    // This flag is marked volatile because the main thread might call close() while the
+    // listener thread is checking the flag in its loop. Volatile ensures both threads
+    // always see the most recent value.
     private volatile boolean running = true;
     // We pass in two callbacks: one to run when a message arrives, and one for when the connection dies.
     public TCPConnection(Socket socket, Consumer<Message> onMessageReceived, Consumer<TCPConnection> onDisconnected)
@@ -72,6 +78,10 @@ public class TCPConnection {
         }
     }
 
+    // Tears down the connection by closing all three resources: input stream, output stream, and socket.
+    // The running flag check at the top makes this method idempotent -- if close() is called twice
+    // (which can happen when both the listener thread and an external caller detect the failure),
+    // the second call returns immediately without re-closing anything or firing the callback again.
     public void close() {
         if (!running) return;
         running = false;
@@ -80,8 +90,10 @@ public class TCPConnection {
             if (out != null) out.close();
             if (socket != null && !socket.isClosed()) socket.close();
         } catch (IOException e) {
-            // Ignored
+            // Ignored because we are already tearing down the connection.
         }
+        // Notify the owner (VpsServer or NodeCommunicator) that this connection is dead
+        // so they can clean up their registries and update the UI.
         if (onDisconnected != null) {
             onDisconnected.accept(this);
         }

@@ -7,7 +7,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 // This class keeps track of all the traffic nodes that have connected to the central server.
-// It helps us find a node connection when we need to send a message to a specific site.
+// It acts as a thread-safe phone book: given a node ID, a name, or a partial ID, it can
+// return the correct TCP connection to reach that node. All maps use ConcurrentHashMap
+// because registration and disconnection events arrive from different network threads.
 public class NodeRegistry {
 
     // We use a ConcurrentHashMap because multiple network threads might try to add or remove
@@ -44,14 +46,22 @@ public class NodeRegistry {
         return nodeConnections.get(nodeId);
     }
 
+    // Returns the set of all currently registered node IDs.
+    // The VpsServer uses this to iterate over all nodes when broadcasting
+    // peer lists, triggering snapshots, or checking how many nodes are online.
     public Set<String> getNodes() {
         return nodeConnections.keySet();
     }
 
+    // Returns the full mapping of node IDs to human-readable names.
+    // This is useful when we need to display a list of all registered sites.
     public java.util.Map<String, String> getNodeNames() {
         return nodeNames;
     }
 
+    // Returns just the human-readable name for a single node ID.
+    // The VpsServer uses this when building peer list payloads to include
+    // both the ID and the name (e.g., "NODE-1(NODE-A)").
     public String getNodeName(String nodeId) {
         return nodeNames.get(nodeId);
     }

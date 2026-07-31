@@ -14,12 +14,19 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-// This is the main user interface class.
-// It uses the Lanterna library to draw windows, panels, and text boxes directly inside the command prompt.
+// This is the main user interface class for both the server and node applications.
+// It uses the Lanterna library to draw windows, panels, and text boxes directly inside the
+// command prompt, creating a Text User Interface (TUI). The screen is divided into four sections:
+// a status bar at the top, a command reference panel, a tasks panel for tracking snapshot progress,
+// and a scrollable log panel at the bottom. A background thread continuously polls the EventQueue
+// for new events and pushes them into the log display.
 public class TerminalScreen {
 
     private final String title;
     private final String menu;
+    // statusFields uses ConcurrentHashMap because network threads call setStatus() while
+    // the GUI thread reads it for rendering. activeTasks uses a LinkedHashMap to preserve
+    // insertion order so tasks appear on screen in the order they were created.
     private final Map<String, String> statusFields = new ConcurrentHashMap<>();
     private final Map<String, Task> activeTasks = new LinkedHashMap<>();
 
@@ -46,11 +53,17 @@ public class TerminalScreen {
         updateStatusPanel();
     }
 
+    // Adds a snapshot progress task to the Active Tasks panel.
+    // This is called when a snapshot is triggered so the user can see it in progress.
+    // Synchronized because the VpsServer or TrafficNode might add tasks from a network thread
+    // while the GUI thread is reading the map to redraw.
     public synchronized void addTask(Task task) {
         activeTasks.put(task.id, task);
         updateTasksPanel();
     }
 
+    // Updates the progress percentage and status text for an existing task.
+    // The VpsServer calls this as snapshot responses arrive from nodes.
     public synchronized void updateTask(String id, double progress, String status) {
         Task t = activeTasks.get(id);
         if (t != null) {
@@ -60,17 +73,24 @@ public class TerminalScreen {
         }
     }
 
+    // Removes a completed or cancelled task from the panel.
     public synchronized void removeTask(String id) {
         activeTasks.remove(id);
         updateTasksPanel();
     }
 
+    // Displays the last typed command in the input box.
+    // This is used as visual feedback so the user can see what they just entered
+    // even after the input field has been cleared for the next command.
     public void setPromptInput(String input) {
         if (commandInput != null && gui != null) {
             gui.getGUIThread().invokeLater(() -> commandInput.setText(input));
         }
     }
 
+    // Adds a new event to the log list and trims old entries if we exceed MAX_LOGS.
+    // The oldest log is removed first (FIFO), which prevents memory from growing
+    // indefinitely during long-running sessions with thousands of traffic updates.
     public synchronized void addLog(Event event) {
         logs.add(event);
         if (logs.size() > MAX_LOGS) {
@@ -79,6 +99,7 @@ public class TerminalScreen {
         updateLogPanel();
     }
 
+    // Clears all entries from the log panel. Triggered by the 'c' command.
     public synchronized void clearLogs() {
         logs.clear();
         updateLogPanel();
@@ -142,7 +163,10 @@ public class TerminalScreen {
         });
     }
 
-    // This method sets up all the boxes and panels and starts the screen loop.
+    // This method assembles all the visual components and enters the main UI loop.
+    // It accepts a callback that will be fired every time the user submits a command.
+    // This call blocks the main thread because addWindowAndWait() does not return
+    // until the window is closed -- that is why we start the server in a background thread first.
     public void start(Consumer<String> onCommand) {
         try {
             DefaultTerminalFactory factory = new DefaultTerminalFactory();
@@ -160,6 +184,7 @@ public class TerminalScreen {
             screen.startScreen();
             running = true;
 
+            // Build the main layout: a vertical stack of panels, each wrapped in a border.
             Panel mainPanel = new Panel(new LinearLayout(Direction.VERTICAL));
 
             statusPanel = new Panel(new GridLayout(2));
@@ -177,6 +202,9 @@ public class TerminalScreen {
             logListBox = new LogListBox(new TerminalSize(80, 15));
             mainPanel.addComponent(logListBox.withBorder(Borders.singleLine("Live Event Log")));
 
+            // The text input box intercepts the Enter key. When the user hits Enter,
+            // we grab the text, clear the box for the next command, and pass the text
+            // to the onCommand callback which routes it to the server or node logic.
             commandInput = new TextBox(new TerminalSize(50, 1)) {
                 @Override
                 public Result handleKeyStroke(KeyStroke keyStroke) {
@@ -204,7 +232,10 @@ public class TerminalScreen {
 
             gui = new MultiWindowTextGUI(screen, new DefaultWindowManager(), new EmptySpace(TextColor.ANSI.DEFAULT));
 
-            // We create a background loop that constantly checks if any new logs arrived from the network.
+            // This background thread bridges the EventQueue (where network threads push events)
+            // and the terminal display. It polls every 50ms so the screen stays responsive
+            // without burning CPU. The thread is marked as a daemon so it will not block
+            // the JVM from shutting down when the user types 'x'.
             Thread eventThread = new Thread(() -> {
                 while (running) {
                     Event e = EventQueue.poll();
@@ -223,8 +254,10 @@ public class TerminalScreen {
             eventThread.setDaemon(true);
             eventThread.start();
 
+            // addWindowAndWait blocks here until the window is closed (via stop() or user action).
             gui.addWindowAndWait(window);
 
+            // Once the window closes, we clean up the event thread and release the terminal.
             running = false;
             eventThread.interrupt();
             screen.stopScreen();
@@ -234,6 +267,8 @@ public class TerminalScreen {
         }
     }
 
+    // Programmatically closes the terminal window. This is called when the user types 'x'.
+    // Setting running to false also stops the event polling thread on its next iteration.
     public void stop() {
         running = false;
         if (gui != null && gui.getActiveWindow() != null) {

@@ -13,6 +13,8 @@ public class TCPServer {
     private final Consumer<Socket> onClientConnected;
     private ServerSocket serverSocket;
     private Thread acceptorThread;
+    // We use volatile here because the main thread might call stop() while the acceptor thread
+    // is checking this flag. Without volatile, the acceptor thread could see a stale cached value.
     private volatile boolean running = false;
 
     public TCPServer(int port, Consumer<Socket> onClientConnected) {
@@ -21,6 +23,8 @@ public class TCPServer {
     }
 
     // This starts the server socket and creates a new background thread to wait for connections.
+    // The thread is marked as a daemon so it does not prevent the JVM from shutting down
+    // when the main thread exits -- we do not want a leftover listener keeping the process alive.
     public void start() throws IOException {
         serverSocket = new ServerSocket(port);
         running = true;
@@ -44,13 +48,16 @@ public class TCPServer {
         }
     }
 
+    // Gracefully shuts down the server by flipping the running flag and closing the socket.
+    // Closing the socket while accept() is blocked causes it to throw an IOException,
+    // which breaks the acceptLoop and lets the thread terminate naturally.
     public void stop() {
         running = false;
         if (serverSocket != null && !serverSocket.isClosed()) {
             try {
                 serverSocket.close();
             } catch (IOException e) {
-                // Ignore
+                // We ignore this because we are already shutting down.
             }
         }
     }

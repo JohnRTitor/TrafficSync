@@ -22,6 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
 // This is the core coordinator for the entire traffic system.
 // It runs on a central server (VPS) and manages all the connected sites,
 // routes messages between them, and coordinates the global snapshots.
+// Internally it delegates connection tracking to NodeRegistry and renders
+// events through the TerminalScreen. Every message that flows between two
+// nodes passes through this class, making it the single routing hub.
 public class VpsServer {
     // These variables hold the server's basic networking and user interface objects.
     private final int port;
@@ -29,7 +32,9 @@ public class VpsServer {
     private TCPServer tcpServer;
     private final NodeRegistry registry = new NodeRegistry();
     // The snapshot dictionary stores the responses from each node during a global state collection.
-    // The currentSnapshotId helps us track which snapshot round is currently running.
+    // We use a ConcurrentHashMap here because snapshot responses arrive on different network threads.
+    // The currentSnapshotId helps us track which snapshot round is currently running so we can
+    // ignore stale responses from a previous round.
     private final ConcurrentHashMap<String, String> snapshotStates = new ConcurrentHashMap<>();
     private String currentSnapshotId = null;
 
@@ -62,14 +67,20 @@ public class VpsServer {
         EventQueue.info("VPS Server stopped.");
     }
 
+    // Provides access to the node registry. This is used by other parts of the
+    // system that need to look up which nodes are currently connected.
     public NodeRegistry getRegistry() {
         return registry;
     }
 
+    // Provides access to the raw snapshot state map. This allows external code
+    // to inspect which nodes have reported their local state so far.
     public ConcurrentHashMap<String, String> getSnapshotStates() {
         return snapshotStates;
     }
 
+    // Refreshes the node count shown on the terminal dashboard.
+    // We call this after every registration or disconnection event.
     private void updateScreenStatus() {
         screen.setStatus("Registered Nodes", String.valueOf(registry.getNodes().size()));
     }
@@ -90,6 +101,11 @@ public class VpsServer {
         }
     }
 
+    // When a node disconnects (either intentionally or due to a network failure),
+    // the TCPConnection's listener thread detects the broken stream and calls this method.
+    // We search through the registry to figure out which node ID belongs to this dead connection,
+    // remove it from our records, and then broadcast the updated peer list so that all
+    // remaining nodes know this site is no longer reachable.
     private void handleDisconnect(TCPConnection connection) {
         String toRemove = null;
         for (String nodeId : registry.getNodes()) {
@@ -199,6 +215,9 @@ public class VpsServer {
         }
     }
 
+    // Sends a manual message from the VPS terminal to a specific node.
+    // The target can be a node ID, a name, or an ID without the NODE- prefix
+    // because resolveNodeId handles all three formats.
     public void sendMessageToNode(String target, String message) {
         String resolvedNodeId = registry.resolveNodeId(target);
         if (resolvedNodeId != null) {
@@ -212,6 +231,9 @@ public class VpsServer {
         }
     }
 
+    // Sends the same message to every currently connected node.
+    // This is triggered when the user types 'b <message>' in the terminal.
+    // If no nodes are connected, we warn the user instead of silently doing nothing.
     public void broadcastMessage(String message) {
         Set<String> nodes = registry.getNodes();
         if (nodes.isEmpty()) {
@@ -286,6 +308,9 @@ public class VpsServer {
         }
     }
 
+    // Writes the final aggregated snapshot out to a text file so we have a persistent record.
+    // Each snapshot gets its own file named after the snapshot ID (e.g. SNAP-1717012345678.txt).
+    // The snapshots/ directory is created automatically if it does not exist yet.
     private void saveAggregatedSnapshot(String snapshotId, ConcurrentHashMap<String, String> states) {
         File dir = new File("snapshots");
         if (!dir.exists()) {
